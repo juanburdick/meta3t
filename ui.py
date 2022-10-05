@@ -11,6 +11,7 @@ class Game(QMainWindow):
         self.setCentralWidget(self.window())
 
 if __name__ == '__main__':
+    print('ssh tested')
     app = QApplication([])
     game = Game()
     game.show()
