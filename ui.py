@@ -1,6 +1,8 @@
 '''Create the startup window.'''
 # pylint: disable=fixme
 import sys
+for path in sys.path:
+    print(path)
 from PyQ5.QtWidgets import QApplication, QMainWindow
 
 class Game(QMainWindow):
