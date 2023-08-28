@@ -3,6 +3,7 @@
 import sys
 for path in sys.path:
     print(path)
+    print("test")
 from PyQt5.QtWidgets import QApplication, QVBoxLayout, QWidget, QTabWidget, QMainWindow
 from tools.stylesheets import MAIN_WINDOW_STYLE, TAB_STYLE
 from tabs.menu import MenuTab
