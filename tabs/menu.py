@@ -23,20 +23,17 @@ class MenuTab(QWidget):
         self.setLayout(QGridLayout())
 
         group_box = MenuBox(parent = self)
-        self.layout().addWidget(group_box.groupbox, *group_box.layout_position) # type: ignore
+        self.layout().addWidget(group_box.groupbox) # type: ignore
 
 class MenuBox(QWidget):
     '''Parent class for GroupBoxes for jogging buttons'''
     def __init__(self, parent: MenuTab):
         super().__init__(parent)
         self.ancestor = parent
+        self.groupbox = WAAMGroupBox(GROUPBOX_STYLE, QGridLayout(), width = 700, height = 80)
 
-        self.layout_position = (0,0) # position in UserControlsTab, hardset to lock position
-
-        self.groupbox = WAAMGroupBox(GROUPBOX_STYLE, QGridLayout(), width = 250, height = 300)
-
-        start_button = MenuButton("Setup Game", (0,0,1,1))
-        exit_button = MenuButton("Exit Game", (1,0,1,1))
+        start_button = MenuButton("New Game", (0,0,1,1))
+        exit_button = MenuButton("Exit Game", (0,1,1,1))
         exit_button.clicked.connect(self.ancestor.ancestor.ancestor.close)
 
         self.groupbox.layout().addWidget(start_button, *start_button.layout_position)
