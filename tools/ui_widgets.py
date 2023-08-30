@@ -7,10 +7,15 @@ from PyQt5.QtGui import QValidator
 from PyQt5.QtCore import Qt
 
 class SquareState(Enum):
-    '''Store the available jog intervals'''
+    '''Define control of squares'''
     PLAYER_A = 1
     PLAYER_B = -1
     PLAYER_NONE = 0
+
+class Turn(Enum):
+    '''Define whose turn it is'''
+    IS_PLAYER_ONE = 1
+    IS_PLAYER_TWO = 0
 
 class GameButton(QPushButton):
     """A standardized button for the game"""

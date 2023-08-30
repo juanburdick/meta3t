@@ -4,6 +4,20 @@ MAIN_WINDOW_STYLE = 'background-color: rgb(136, 136, 136)'
 
 TAB_STYLE = 'QTabBar::tab { height: 40px; width: 360px; font: 16pt }'
 
+PLAYER_1_STYLE = ('''
+                QPushButton {
+                    color: rgb(0,0,0);\n
+                    background-color: rgb(150,105,25);\n
+                    font: bold 24pt
+                  }''')
+
+PLAYER_2_STYLE = ('''
+                QPushButton {
+                    color: rgb(0,0,0);\n
+                    background-color: rgb(67,97,117);\n
+                    font: bold 24pt
+                  }''')
+
 '''Widget styles to import and apply across the UI'''
 # Applied to many of the UI buttons
 BTN_STYLE = ('''
