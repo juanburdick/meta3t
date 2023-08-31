@@ -14,23 +14,21 @@ class GameButton(QPushButton):
         self.setFixedSize(size, size)
         self.layout_position = layout_position
 
-    def setButtonState(self):
+    def setButtonState(self, is_player_one_turn: bool):
         '''a user has selected this square, gaining control of it'''
-        if self.ancestor.ancestor.ancestor.is_player_one_turn:
+        if is_player_one_turn:
             self.setStyleSheet(PLAYER_1_STYLE)
             self.setText('x')
-            self.ancestor.ancestor.ancestor.switch_turn()
         else:
             self.setStyleSheet(PLAYER_2_STYLE)
             self.setText('o')
-            self.ancestor.ancestor.ancestor.switch_turn()
         self.setDisabled(True)
 
 class MetaBoard(QWidget):
     '''Contain and track the main game/game board'''
-    GRID = [(0,0,1,1), (0,1,1,1), (0,2,1,1),
-            (1,0,1,1), (1,1,1,1), (1,2,1,1),
-            (2,0,1,1), (2,1,1,1), (2,2,1,1)]
+    GRID = [(0,0), (0,1), (0,2),
+            (1,0), (1,1), (1,2),
+            (2,0), (2,1), (2,2)]
 
     def __init__(self, parent: 'GameController', size: int, layout_position: Tuple[int,...] = (0,0)):
         super().__init__(parent)
@@ -44,9 +42,9 @@ class MetaBoard(QWidget):
 
 class SubGameBoard(QWidget):
     '''Contains a subgame of tic tac toe'''
-    GRID = [(0,0,1,1), (0,1,1,1), (0,2,1,1),
-            (1,0,1,1), (1,1,1,1), (1,2,1,1),
-            (2,0,1,1), (2,1,1,1), (2,2,1,1)]
+    GRID = [(0,0), (0,1), (0,2),
+            (1,0), (1,1), (1,2),
+            (2,0), (2,1), (2,2)]
 
     def __init__(self, parent: MetaBoard, size: int, layout_position : Tuple[int,...] = (0,0)):
         super().__init__(parent)
@@ -55,9 +53,14 @@ class SubGameBoard(QWidget):
         self.layout_position = layout_position
 
         for position in self.GRID:
-            button = GameButton(self, f'{position[:2]}', 60, position)
-            button.clicked.connect(button.setButtonState)
+            button = GameButton(self, f'{position}', 60, position)
+            button.clicked.connect(lambda: self.take_turn(button))
             self.groupbox.layout().addWidget(button, *button.layout_position) # type: ignore
+
+    def take_turn(self, button: GameButton):
+        '''set button state based on turn player and switch turn'''
+        button.setButtonState(self.ancestor.ancestor.is_player_one_turn)
+        self.ancestor.ancestor.switch_turn()
 
 class GameController(QWidget):
     '''Used to implement a tabbed system of splitting widgets'''
