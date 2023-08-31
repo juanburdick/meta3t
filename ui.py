@@ -32,7 +32,7 @@ class MetaBoard(QWidget):
             (1,0,1,1), (1,1,1,1), (1,2,1,1),
             (2,0,1,1), (2,1,1,1), (2,2,1,1)]
 
-    def __init__(self, parent, size: int, layout_position: Tuple[int,...] = (0,0)):
+    def __init__(self, parent: 'GameController', size: int, layout_position: Tuple[int,...] = (0,0)):
         super().__init__(parent)
         self.ancestor = parent
         self.groupbox = GameGroupBox(GROUPBOX_STYLE, size, size)
@@ -61,11 +61,10 @@ class SubGameBoard(QWidget):
 
 class GameController(QWidget):
     '''Used to implement a tabbed system of splitting widgets'''
-    TURN = 1
-
     def __init__(self, parent: 'HostWindow'):
         super().__init__(parent)
         self.ancestor = parent
+        self.is_player_one_turn = True
         self.setLayout(QGridLayout())
 
         meta = MetaBoard(self, 700, (0,0,1,1))
@@ -74,11 +73,8 @@ class GameController(QWidget):
         self.layout().addWidget(meta.groupbox, *meta.layout_position)
         self.layout().addWidget(menu.groupbox, *menu.layout_position)
 
-    def is_player_one_turn(self) -> bool:
-        return self.TURN
-
     def switch_turn(self):
-        self.TURN = 0 if self.is_player_one_turn() else 1
+        self.is_player_one_turn = False if self.is_player_one_turn else True
 
 class MenuBox(QWidget):
     '''Parent class for GroupBoxes for jogging buttons'''
