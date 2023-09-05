@@ -4,26 +4,33 @@ MAIN_WINDOW_STYLE = 'background-color: rgb(136, 136, 136)'
 
 TAB_STYLE = 'QTabBar::tab { height: 40px; width: 360px; font: 16pt }'
 
-NO_PLAYER_STYLE = ('''
-                QPushButton {
-                   color: rgb(0,0,0);\n
-                   background-color: rgb(169,169,169);\n
-                   font: bold 24pt
-                  }''')
-
-PLAYER_1_STYLE = ('''
+P1_BTN_STYLE = ('''
                 QPushButton {
                     color: rgb(0,0,0);\n
                     background-color: rgb(150,105,25);\n
                     font: bold 24pt
-                  }''')
+                }''')
 
-PLAYER_2_STYLE = ('''
+P2_BTN_STYLE = ('''
                 QPushButton {
                     color: rgb(0,0,0);\n
                     background-color: rgb(67,97,117);\n
                     font: bold 24pt
-                  }''')
+                }''')
+
+P1_TURN_INDICATOR = ('''
+                    QGroupBox {
+                        background-color: rgb(150,105,25);\n
+                        border-width: 4px;\n
+                        border-style: ridge;
+                    }''')
+
+P2_TURN_INDICATOR = ('''
+                    QGroupBox {
+                        background-color: rgb(67,97,117);\n
+                        border-width: 4px;\n
+                        border-style: ridge;
+                    }''')
 
 '''Widget styles to import and apply across the UI'''
 # Applied to many of the UI buttons
@@ -45,8 +52,10 @@ TEXT_STYLE = ('border-style: ridge;\nbackground-color: white;\nborder-color: bla
 # Applied to QGroupBoxes
 GROUPBOX_STYLE = ('''
                 QGroupBox {
-                    background-color: rgb(160, 160, 160);\nborder-width: 4px;\nborder-style: ridge;
-                }''')
+                    background-color: rgb(160, 160, 160);\n
+                    border-width: 4px;\n
+                    border-style: ridge;
+                  }''')
 
 # Style used for labels so they blend in with the background of their groupbox widget
 BLEND_BACKGROUND_STYLE = ('background-color: rgb(160, 160, 160);\nfont: bold 12pt;')
