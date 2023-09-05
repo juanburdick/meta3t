@@ -5,7 +5,7 @@ from typing import List, Dict, Tuple
 from itertools import product
 from PyQt5.QtWidgets import QApplication, QGridLayout, QWidget, QMainWindow, QPushButton
 from tools.ui_widgets import GameGroupBox, MenuButton
-from tools.stylesheets import MAIN_WINDOW_STYLE, GROUPBOX_STYLE, PLAYER_1_STYLE, PLAYER_2_STYLE
+from tools.stylesheets import MAIN_WINDOW_STYLE, GROUPBOX_STYLE, NO_PLAYER_STYLE, PLAYER_1_STYLE, PLAYER_2_STYLE
 
 class GameButton(QPushButton):
     """A standardized button for the game"""
@@ -15,8 +15,13 @@ class GameButton(QPushButton):
         self.setFixedSize(size, size)
         self.layout_position = layout_position
 
-    def setButtonState(self, is_player_one_turn: bool):
+    def getButtonPosition(self):
+        return self.layout_position
+
+    def setButtonState(self):
         '''a user has selected this square, gaining control of it'''
+        is_player_one_turn = self.ancestor.ancestor.ancestor.who_is_taking_turn(self)
+
         if is_player_one_turn:
             self.setStyleSheet(PLAYER_1_STYLE)
             self.setText('x')
@@ -24,6 +29,12 @@ class GameButton(QPushButton):
             self.setStyleSheet(PLAYER_2_STYLE)
             self.setText('o')
         self.setDisabled(True)
+
+    def resetButtonstate(self):
+        '''undo button was clicked, reset this square'''
+        self.setStyleSheet(NO_PLAYER_STYLE)
+        self.setText('')
+        self.setEnabled(True)
 
 class MetaBoard(QWidget):
     '''Contain and track the main game/game board'''
@@ -49,24 +60,16 @@ class SubGameBoard(QWidget):
         self.groupbox = GameGroupBox(GROUPBOX_STYLE, size, size)
         self.layout_position = layout_position
 
-        self.buttons: Dict[Tuple[int,int], GameButton] = {}
-
         for position in product((0,1,2), repeat = 2):
-            self.buttons[position] = GameButton(self, f'{position}', 60, position)
-            self.buttons[position].clicked.connect(self.take_turn)
-            self.groupbox.layout().addWidget(self.buttons[position], *self.buttons[position].layout_position) # type: ignore
-
-    def take_turn(self):
-        '''set button state based on turn player and switch turn'''
-        self.sender().setButtonState(self.ancestor.ancestor.is_player_one_turn)
-        self.ancestor.ancestor.switch_turn()
+            button = GameButton(self, f'{position}', 60, position)
+            button.clicked.connect(button.setButtonState)
+            self.groupbox.layout().addWidget(button, *position) # type: ignore
 
 class GameController(QWidget):
     '''Used to implement a tabbed system of splitting widgets'''
     def __init__(self, parent: 'HostWindow'):
         super().__init__(parent)
         self.ancestor = parent
-        self.is_player_one_turn = True
         self.setLayout(QGridLayout())
 
         meta = MetaBoard(self, 700, (0,0,1,1))
@@ -75,8 +78,25 @@ class GameController(QWidget):
         self.layout().addWidget(meta.groupbox, *meta.layout_position)
         self.layout().addWidget(menu.groupbox, *menu.layout_position)
 
+        self.is_player_one_turn: bool = True
+        self.turn_history: List[GameButton] = []
+
     def switch_turn(self):
         self.is_player_one_turn = False if self.is_player_one_turn else True
+
+    def who_is_taking_turn(self, button: GameButton) -> bool:
+        '''method that returns active player's turn, stores turn history, and updates turn player'''
+        ret = self.is_player_one_turn
+        self.switch_turn()
+        self.turn_history.append(button)
+        return ret
+
+    def undo_last_move(self):
+        '''undo the most recent move'''
+        if self.turn_history:
+            button = self.turn_history.pop()
+            button.resetButtonstate()
+            self.switch_turn()
 
 class MenuBox(QWidget):
     '''Parent class for GroupBoxes for jogging buttons'''
@@ -87,12 +107,14 @@ class MenuBox(QWidget):
         self.groupbox = GameGroupBox(GROUPBOX_STYLE, width = 700, height = 80)
 
         start_button = MenuButton("New Game", (0,0,1,1))
+        self.groupbox.layout().addWidget(start_button, *start_button.layout_position)
+
         undo_button = MenuButton("Undo", (0,1,1,1))
+        undo_button.clicked.connect(self.ancestor.undo_last_move)
+        self.groupbox.layout().addWidget(undo_button, *undo_button.layout_position)
+
         exit_button = MenuButton("Exit Game", (0,2,1,1))
         exit_button.clicked.connect(self.ancestor.ancestor.close)
-
-        self.groupbox.layout().addWidget(start_button, *start_button.layout_position)
-        self.groupbox.layout().addWidget(undo_button, *undo_button.layout_position)
         self.groupbox.layout().addWidget(exit_button, *exit_button.layout_position)
 
 class HostWindow(QMainWindow):

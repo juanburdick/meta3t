@@ -4,6 +4,13 @@ MAIN_WINDOW_STYLE = 'background-color: rgb(136, 136, 136)'
 
 TAB_STYLE = 'QTabBar::tab { height: 40px; width: 360px; font: 16pt }'
 
+NO_PLAYER_STYLE = ('''
+                QPushButton {
+                   color: rgb(0,0,0);\n
+                   background-color: rgb(169,169,169);\n
+                   font: bold 24pt
+                  }''')
+
 PLAYER_1_STYLE = ('''
                 QPushButton {
                     color: rgb(0,0,0);\n
