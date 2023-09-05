@@ -1,7 +1,8 @@
 '''Create the startup window.'''
 # pylint: disable=no-name-in-module, import-error, fixme
 import sys
-from typing import Tuple
+from typing import List, Dict, Tuple
+from itertools import product
 from PyQt5.QtWidgets import QApplication, QGridLayout, QWidget, QMainWindow, QPushButton
 from tools.ui_widgets import GameGroupBox, MenuButton
 from tools.stylesheets import MAIN_WINDOW_STYLE, GROUPBOX_STYLE, PLAYER_1_STYLE, PLAYER_2_STYLE
@@ -42,24 +43,22 @@ class MetaBoard(QWidget):
 
 class SubGameBoard(QWidget):
     '''Contains a subgame of tic tac toe'''
-    GRID = [(0,0), (0,1), (0,2),
-            (1,0), (1,1), (1,2),
-            (2,0), (2,1), (2,2)]
-
     def __init__(self, parent: MetaBoard, size: int, layout_position : Tuple[int,...] = (0,0)):
         super().__init__(parent)
         self.ancestor = parent
         self.groupbox = GameGroupBox(GROUPBOX_STYLE, size, size)
         self.layout_position = layout_position
 
-        for position in self.GRID:
-            button = GameButton(self, f'{position}', 60, position)
-            button.clicked.connect(lambda: self.take_turn(button))
-            self.groupbox.layout().addWidget(button, *button.layout_position) # type: ignore
+        self.buttons: Dict[Tuple[int,int], GameButton] = {}
 
-    def take_turn(self, button: GameButton):
+        for position in product((0,1,2), repeat = 2):
+            self.buttons[position] = GameButton(self, f'{position}', 60, position)
+            self.buttons[position].clicked.connect(self.take_turn)
+            self.groupbox.layout().addWidget(self.buttons[position], *self.buttons[position].layout_position) # type: ignore
+
+    def take_turn(self):
         '''set button state based on turn player and switch turn'''
-        button.setButtonState(self.ancestor.ancestor.is_player_one_turn)
+        self.sender().setButtonState(self.ancestor.ancestor.is_player_one_turn)
         self.ancestor.ancestor.switch_turn()
 
 class GameController(QWidget):
