@@ -5,7 +5,7 @@ from typing import List, Dict, Tuple
 from itertools import product
 from PyQt5.QtWidgets import QApplication, QGridLayout, QWidget, QMainWindow, QPushButton
 from tools.ui_widgets import GameGroupBox, MenuButton
-from tools.stylesheets import GROUPBOX_STYLE,DISABLED_GROUPBOX_STYLE,P1_BTN_STYLE,P2_BTN_STYLE,P1_TURN_INDICATOR,P2_TURN_INDICATOR
+from tools.stylesheets import get_style,BTN_STYLE,BOX_STYLE
 
 class GameButton(QPushButton):
     """A standardized button for the game"""
@@ -23,10 +23,10 @@ class GameButton(QPushButton):
         is_player_one_turn = self.ancestor.ancestor.ancestor.who_is_taking_turn(self)
 
         if is_player_one_turn:
-            self.setStyleSheet(P1_BTN_STYLE)
+            self.setStyleSheet(get_style(BTN_STYLE.PL_1))
             self.setText('x')
         else:
-            self.setStyleSheet(P2_BTN_STYLE)
+            self.setStyleSheet(get_style(BTN_STYLE.PL_2))
             self.setText('o')
         self.setDisabled(True)
 
@@ -45,7 +45,7 @@ class MetaBoard(QWidget):
     def __init__(self, parent: 'GameController', size: int, layout_position: Tuple[int,...] = (0,0)):
         super().__init__(parent)
         self.ancestor = parent
-        self.groupbox = GameGroupBox(P1_TURN_INDICATOR, size, size)
+        self.groupbox = GameGroupBox(get_style(BOX_STYLE.PL_1), size, size)
         self.layout_position = layout_position
 
         for position in self.GRID:
@@ -54,15 +54,14 @@ class MetaBoard(QWidget):
 
     def update_turn_indicator(self, is_player_one: bool):
         '''update the color of the groupbox to indicate which player's turn it is'''
-        self.groupbox.setStyleSheet(P1_TURN_INDICATOR if is_player_one else P2_TURN_INDICATOR)
-
+        self.groupbox.setStyleSheet(get_style(BOX_STYLE.PL_1 if is_player_one else BOX_STYLE.PL_2))
 
 class SubGameBoard(QWidget):
     '''Contains a subgame of tic tac toe'''
     def __init__(self, parent: MetaBoard, size: int, layout_position : Tuple[int,...] = (0,0)):
         super().__init__(parent)
         self.ancestor = parent
-        self.groupbox = GameGroupBox(GROUPBOX_STYLE, size, size)
+        self.groupbox = GameGroupBox(get_style(BOX_STYLE.DEFAULT), size, size)
         self.layout_position = layout_position
         self.buttons: List[GameButton] = []
 
@@ -80,10 +79,10 @@ class SubGameBoard(QWidget):
     def disable_board(self):
         '''this board is not available to the player this turn, disable all buttons in it'''
         if self.layout_position == (2,2):
-            self.groupbox.setStyleSheet(DISABLED_GROUPBOX_STYLE)
+            self.groupbox.setStyleSheet(get_style(BOX_STYLE.DISABLED))
             for button in self.buttons:
                 button.setDisabled(True)
-                button.setStyleSheet('background-color: rgba(130,130,130,100)')
+                button.setStyleSheet(get_style(BTN_STYLE.DISABLED))
 
 class GameController(QWidget):
     '''Used to implement a tabbed system of splitting widgets'''
@@ -132,7 +131,7 @@ class MenuBox(QWidget):
         super().__init__(parent)
         self.ancestor = parent
         self.layout_position = layout_position
-        self.groupbox = GameGroupBox(P1_TURN_INDICATOR, width = 700, height = 80)
+        self.groupbox = GameGroupBox(get_style(BOX_STYLE.PL_1), width = 700, height = 80)
 
         reset_button = MenuButton("New Game", (0,0,1,1))
         reset_button.clicked.connect(self.ancestor.reset_new_game)
@@ -148,7 +147,7 @@ class MenuBox(QWidget):
 
     def update_turn_indicator(self, is_player_one: bool):
         '''update the color of the groupbox to indicate which player's turn it is'''
-        self.groupbox.setStyleSheet(P1_TURN_INDICATOR if is_player_one else P2_TURN_INDICATOR)
+        self.groupbox.setStyleSheet(get_style(BOX_STYLE.PL_1 if is_player_one else BOX_STYLE.PL_2))
 
 class HostWindow(QMainWindow):
     '''The main game window'''

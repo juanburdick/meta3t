@@ -4,13 +4,13 @@ from typing import List, Tuple, Optional, Union
 from PyQt5.QtWidgets import QPushButton, QLabel, QGroupBox, QGridLayout, QVBoxLayout, QToolButton, QLineEdit, QTextEdit, QRadioButton
 from PyQt5.QtGui import QValidator
 from PyQt5.QtCore import Qt
-from tools.stylesheets import MACRO_BTN_STYLE
+from tools.stylesheets import BTN_STYLE_REF
 
 class MenuButton(QPushButton):
     """A standardized button for the game"""
     def __init__(self, text: str = '', layout_position: Tuple[int,...] = (0,0)):
         super().__init__(text = text)
-        self.setStyleSheet(MACRO_BTN_STYLE)
+        self.setStyleSheet(BTN_STYLE_REF)
         self.setFixedSize(160, 40)
         self.layout_position = layout_position
 

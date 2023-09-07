@@ -1,49 +1,41 @@
 '''Standardized style sheets for the game windows.'''
+from enum import Enum
 
-P1_BTN_STYLE = ('''
-                QPushButton {
-                    color: rgb(0,0,0);\n
-                    background-color: rgb(150,105,25);\n
-                    font: bold 24pt
-                }''')
+_PLAYER_1_COLOR = (150,105,25,255)
+_PLAYER_2_COLOR = (67,97,117,255)
 
-P2_BTN_STYLE = ('''
-                QPushButton {
-                    color: rgb(0,0,0);\n
-                    background-color: rgb(67,97,117);\n
-                    font: bold 24pt
-                }''')
+class BTN_STYLE(Enum):
+    '''enum for button colors'''
+    PL_1 = _PLAYER_1_COLOR
+    PL_2 = _PLAYER_2_COLOR
+    DEFAULT = (136,136,136,255)
+    DISABLED = (130,130,130,100)
 
-P1_TURN_INDICATOR = ('''
-                    QGroupBox {
-                        background-color: rgb(150,105,25);\n
-                        border-width: 4px;\n
+class BOX_STYLE(Enum):
+    '''enum for box colors'''
+    PL_1 = _PLAYER_1_COLOR
+    PL_2 = _PLAYER_2_COLOR
+    DEFAULT = (160,160,160,255)
+    DISABLED = (50,50,50,255)
+
+def get_style(select: BTN_STYLE | BOX_STYLE) -> str:
+    '''get button style for selected player'''
+    if isinstance(select, BTN_STYLE):
+        return (f'''QPushButton {{
+                        color: rgb(0,0,0);
+                        background-color: rgba{select.value};
+                        font: bold 24pt
+                    }}''')
+    if isinstance(select, BOX_STYLE):
+        return (f'''QGroupBox {{
+                        background-color: rgba{select.value};
+                        border-width: 4px;
                         border-style: ridge;
-                    }''')
+                    }}''')
+    else:
+        return ''
 
-P2_TURN_INDICATOR = ('''
-                    QGroupBox {
-                        background-color: rgb(67,97,117);\n
-                        border-width: 4px;\n
-                        border-style: ridge;
-                    }''')
-
-# Applied to QGroupBoxes
-GROUPBOX_STYLE = ('''
-                    QGroupBox {
-                        background-color: rgb(160, 160, 160);\n
-                        border-width: 4px;\n
-                        border-style: ridge;
-                    }''')
-
-DISABLED_GROUPBOX_STYLE = ('''
-                           QGroupBox {
-                                background-color: rgb(50, 50, 50);\n
-                                border-width: 4px;\n
-                                border-style: ridge;
-                            }''')
-
-BTN_STYLE = ('''
+BTN_STYLE_REF = ('''
             QPushButton {
                 background-color: rgb(150, 150, 150);\n
 
