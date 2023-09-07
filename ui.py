@@ -5,7 +5,7 @@ from typing import List, Dict, Tuple
 from itertools import product
 from PyQt5.QtWidgets import QApplication, QGridLayout, QWidget, QMainWindow, QPushButton
 from tools.ui_widgets import GameGroupBox, MenuButton
-from tools.stylesheets import MAIN_WINDOW_STYLE,GROUPBOX_STYLE,P1_BTN_STYLE,P2_BTN_STYLE,P1_TURN_INDICATOR,P2_TURN_INDICATOR
+from tools.stylesheets import GROUPBOX_STYLE,DISABLED_GROUPBOX_STYLE,P1_BTN_STYLE,P2_BTN_STYLE,P1_TURN_INDICATOR,P2_TURN_INDICATOR
 
 class GameButton(QPushButton):
     """A standardized button for the game"""
@@ -64,11 +64,26 @@ class SubGameBoard(QWidget):
         self.ancestor = parent
         self.groupbox = GameGroupBox(GROUPBOX_STYLE, size, size)
         self.layout_position = layout_position
+        self.buttons: List[GameButton] = []
 
         for position in product((0,1,2), repeat = 2):
             button = GameButton(self, '', 60, position)
             button.clicked.connect(button.setButtonState)
             self.groupbox.layout().addWidget(button, *position) # type: ignore
+            self.buttons.append(button)
+
+        self.disable_board()
+
+    def set_active_board(self):
+        '''this is the board the current player will be forced to play in, set all buttons in it active'''
+
+    def disable_board(self):
+        '''this board is not available to the player this turn, disable all buttons in it'''
+        if self.layout_position == (2,2):
+            self.groupbox.setStyleSheet(DISABLED_GROUPBOX_STYLE)
+            for button in self.buttons:
+                button.setDisabled(True)
+                button.setStyleSheet('background-color: rgba(130,130,130,100)')
 
 class GameController(QWidget):
     '''Used to implement a tabbed system of splitting widgets'''
@@ -141,7 +156,7 @@ class HostWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle('Meta Tic-Tac-Toe')
         self.setCentralWidget(GameController(parent = self))
-        self.setStyleSheet(MAIN_WINDOW_STYLE)
+        self.setStyleSheet('background-color: rgb(136, 136, 136)')
         self.show()
 
 if __name__ == '__main__':
