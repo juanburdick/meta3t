@@ -103,9 +103,13 @@ class GameController(QWidget):
     def undo_last_move(self):
         '''undo the most recent move'''
         if self.turn_history:
-            button = self.turn_history.pop()
-            button.resetButtonstate()
+            self.turn_history.pop().resetButtonstate()
             self.switch_turn()
+
+    def reset_new_game(self):
+        '''reset the board for a new game'''
+        while self.turn_history:
+            self.undo_last_move()
 
 class MenuBox(QWidget):
     '''Parent class for GroupBoxes for jogging buttons'''
@@ -115,8 +119,9 @@ class MenuBox(QWidget):
         self.layout_position = layout_position
         self.groupbox = GameGroupBox(P1_TURN_INDICATOR, width = 700, height = 80)
 
-        start_button = MenuButton("New Game", (0,0,1,1))
-        self.groupbox.layout().addWidget(start_button, *start_button.layout_position)
+        reset_button = MenuButton("New Game", (0,0,1,1))
+        reset_button.clicked.connect(self.ancestor.reset_new_game)
+        self.groupbox.layout().addWidget(reset_button, *reset_button.layout_position)
 
         undo_button = MenuButton("Undo", (0,1,1,1))
         undo_button.clicked.connect(self.ancestor.undo_last_move)
