@@ -1,7 +1,7 @@
 '''Create the startup window.'''
 # pylint: disable=no-name-in-module, import-error, fixme
 import sys
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 from itertools import product
 from PyQt5.QtWidgets import QApplication, QGridLayout, QWidget, QMainWindow, QPushButton
 from tools.ui_widgets import GameGroupBox, MenuButton
@@ -15,12 +15,14 @@ class GameButton(QPushButton):
         self.setFixedSize(size, size)
         self.layout_position = layout_position
         self.setStyleSheet(get_style(BTN_STYLE.DEFAULT))
+        self.is_claimed: bool = False
 
     def getButtonPosition(self):
         return self.layout_position
 
-    def setButtonState(self):
+    def claim(self):
         '''a user has selected this square, gaining control of it'''
+        self.is_claimed = True
         is_player_one_turn = self.ancestor.ancestor.ancestor.who_is_taking_turn(self)
 
         if is_player_one_turn:
@@ -33,7 +35,8 @@ class GameButton(QPushButton):
 
     def resetButtonstate(self):
         '''undo button was clicked, reset this square'''
-        self.setStyleSheet('')
+        self.is_claimed = False
+        self.setStyleSheet(get_style(BTN_STYLE.DEFAULT))
         self.setText('')
         self.setEnabled(True)
 
@@ -64,25 +67,29 @@ class SubGameBoard(QWidget):
         self.ancestor = parent
         self.groupbox = GameGroupBox(get_style(BOX_STYLE.DEFAULT), size, size)
         self.layout_position = layout_position
+        self.ancestor.ancestor.boards[layout_position] = self
+
         self.buttons: List[GameButton] = []
 
         for position in product((0,1,2), repeat = 2):
             button = GameButton(self, '', 60, position)
-            button.clicked.connect(button.setButtonState)
+            button.clicked.connect(button.claim)
             self.groupbox.layout().addWidget(button, *position) # type: ignore
             self.buttons.append(button)
 
-        self.disable_board()
-
     def set_active_board(self):
         '''this is the board the current player will be forced to play in, set all buttons in it active'''
+        self.groupbox.setStyleSheet(get_style(BOX_STYLE.DEFAULT))
+        for button in self.buttons:
+            if not button.is_claimed:
+                button.resetButtonstate()
 
     def disable_board(self):
         '''this board is not available to the player this turn, disable all buttons in it'''
-        if self.layout_position == (2,2):
-            self.groupbox.setStyleSheet(get_style(BOX_STYLE.DISABLED))
-            for button in self.buttons:
-                button.setDisabled(True)
+        self.groupbox.setStyleSheet(get_style(BOX_STYLE.DISABLED))
+        for button in self.buttons:
+            button.setDisabled(True)
+            if not button.is_claimed:
                 button.setStyleSheet(get_style(BTN_STYLE.DISABLED))
 
 class GameController(QWidget):
@@ -92,18 +99,27 @@ class GameController(QWidget):
         self.ancestor = parent
         self.setLayout(QGridLayout())
 
-        meta = MetaBoard(self, 700, (0,0,1,1))
-        self.meta = meta
-        menu = MenuBox(self, (1,0,1,1))
-        self.menu = menu
-
-        self.layout().addWidget(meta.groupbox, *meta.layout_position)
-        self.layout().addWidget(menu.groupbox, *menu.layout_position)
-
         self.is_player_one_turn: bool = True
         self.turn_history: List[GameButton] = []
+        self.boards: Dict[Tuple[int,int], SubGameBoard] = {}
 
-    def switch_turn(self):
+        self.meta = MetaBoard(self, 700, (0,0,1,1))
+        self.menu = MenuBox(self, (1,0,1,1))
+
+        self.layout().addWidget(self.meta.groupbox, *self.meta.layout_position)
+        self.layout().addWidget(self.menu.groupbox, *self.menu.layout_position)
+
+    def update_boards(self, target: Tuple[int,int]):
+        '''Set boards active or inactive based on the last move'''
+        for layout_position, board in self.boards.items():
+            if layout_position == target:
+                board.set_active_board()
+            else:
+                board.disable_board()
+
+    def switch_turn(self, source_button: Optional[GameButton] = None):
+        if source_button is not None:
+            self.update_boards(source_button.layout_position)
         self.is_player_one_turn = False if self.is_player_one_turn else True
         self.menu.update_turn_indicator(self.is_player_one_turn)
         self.meta.update_turn_indicator(self.is_player_one_turn)
@@ -111,20 +127,26 @@ class GameController(QWidget):
     def who_is_taking_turn(self, button: GameButton) -> bool:
         '''method that returns active player's turn, stores turn history, and updates turn player'''
         ret = self.is_player_one_turn
-        self.switch_turn()
+        self.switch_turn(button)
         self.turn_history.append(button)
         return ret
 
     def undo_last_move(self):
         '''undo the most recent move'''
-        if self.turn_history:
+        if len(self.turn_history) > 1:
             self.turn_history.pop().resetButtonstate()
-            self.switch_turn()
+            self.switch_turn(self.turn_history[-1])
+        else:
+            self.reset_new_game()
 
     def reset_new_game(self):
         '''reset the board for a new game'''
-        while self.turn_history:
-            self.undo_last_move()
+        for board in self.boards.values():
+            for button in board.buttons:
+                button.resetButtonstate()
+            board.set_active_board()
+        if not self.is_player_one_turn:
+            self.switch_turn()
 
 class MenuBox(QWidget):
     '''Parent class for GroupBoxes for jogging buttons'''
