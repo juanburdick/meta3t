@@ -14,6 +14,7 @@ class GameButton(QPushButton):
         self.ancestor = parent
         self.setFixedSize(size, size)
         self.layout_position = layout_position
+        self.setStyleSheet(get_style(BTN_STYLE.DEFAULT))
 
     def getButtonPosition(self):
         return self.layout_position
@@ -155,11 +156,11 @@ class HostWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle('Meta Tic-Tac-Toe')
         self.setCentralWidget(GameController(parent = self))
-        self.setStyleSheet('background-color: rgb(136, 136, 136)')
+        self.setStyleSheet('background-color: rgb(22,25,37)')
         self.show()
 
 if __name__ == '__main__':
     app = QApplication([])
     game = HostWindow()
-    game.resize(700, 720)
+    game.setFixedSize(718,804)
     sys.exit(app.exec_())
