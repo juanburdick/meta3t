@@ -3,9 +3,16 @@
 import sys
 from typing import List, Dict, Tuple, Optional
 from itertools import product
-from PyQt5.QtWidgets import QApplication, QGridLayout, QWidget, QMainWindow, QPushButton
+from PyQt5.QtCore import QSize
+from PyQt5.QtWidgets import QApplication, QGridLayout, QWidget, QMainWindow, QPushButton, QStyle
 from tools.ui_widgets import GameGroupBox, MenuButton
 from tools.stylesheets import get_style,BTN_STYLE,BOX_STYLE
+
+_GAME_SIZE = 700
+_MENU_SIZE = 80
+_BOX_SIZE = 220
+_BTN_SIZE = 60
+_CLAIMED_SIZE = 195
 
 class GameButton(QPushButton):
     """A standardized button for the game"""
@@ -16,6 +23,7 @@ class GameButton(QPushButton):
         self.layout_position = layout_position
         self.setStyleSheet(get_style(BTN_STYLE.DEFAULT))
         self.is_claimed: bool = False
+        self.setIconSize(QSize(_BTN_SIZE,_BTN_SIZE))
 
     def getButtonPosition(self):
         return self.layout_position
@@ -27,7 +35,6 @@ class GameButton(QPushButton):
 
         if is_player_one_turn:
             self.setStyleSheet(get_style(BTN_STYLE.PL_1))
-            self.setText('x')
         else:
             self.setStyleSheet(get_style(BTN_STYLE.PL_2))
             self.setText('o')
@@ -53,7 +60,7 @@ class MetaBoard(QWidget):
         self.layout_position = layout_position
 
         for position in self.GRID:
-            subgame = SubGameBoard(self, 220, position)
+            subgame = SubGameBoard(self, _BOX_SIZE, position)
             self.groupbox.layout().addWidget(subgame.groupbox, *subgame.layout_position) # type: ignore
 
     def update_turn_indicator(self, is_player_one: bool):
@@ -72,10 +79,13 @@ class SubGameBoard(QWidget):
         self.buttons: List[GameButton] = []
 
         for position in product((0,1,2), repeat = 2):
-            button = GameButton(self, '', 60, position)
+            button = GameButton(self, '', _BTN_SIZE, position)
             button.clicked.connect(button.claim)
             self.groupbox.layout().addWidget(button, *position) # type: ignore
             self.buttons.append(button)
+
+        if self.layout_position == (0,0):
+            self.claim_board()
 
     def set_active_board(self):
         '''this is the board the current player will be forced to play in, set all buttons in it active'''
@@ -92,6 +102,16 @@ class SubGameBoard(QWidget):
             if not button.is_claimed:
                 button.setStyleSheet(get_style(BTN_STYLE.DISABLED))
 
+    def claim_board(self):
+        '''a player has won this board, display that player's symbol and lock the board'''
+        for button in self.buttons:
+            button.setParent(None)
+
+        claimed_button = GameButton(self, 'x', _CLAIMED_SIZE, (0,0))
+        self.groupbox.layout().addWidget(claimed_button, *claimed_button.layout_position)
+        claimed_button.setStyleSheet(get_style(BTN_STYLE.PL_1, default = False))
+        claimed_button.setDisabled(True)
+
 class GameController(QWidget):
     '''Used to implement a tabbed system of splitting widgets'''
     def __init__(self, parent: 'HostWindow'):
@@ -103,7 +123,7 @@ class GameController(QWidget):
         self.turn_history: List[GameButton] = []
         self.boards: Dict[Tuple[int,int], SubGameBoard] = {}
 
-        self.meta = MetaBoard(self, 700, (0,0,1,1))
+        self.meta = MetaBoard(self, _GAME_SIZE, (0,0,1,1))
         self.menu = MenuBox(self, (1,0,1,1))
 
         self.layout().addWidget(self.meta.groupbox, *self.meta.layout_position)
@@ -155,7 +175,7 @@ class MenuBox(QWidget):
         super().__init__(parent)
         self.ancestor = parent
         self.layout_position = layout_position
-        self.groupbox = GameGroupBox(get_style(BOX_STYLE.PL_1), width = 700, height = 80)
+        self.groupbox = GameGroupBox(get_style(BOX_STYLE.PL_1), width = _GAME_SIZE, height = _MENU_SIZE)
 
         reset_button = MenuButton("New Game", (0,0,1,1))
         reset_button.clicked.connect(self.ancestor.reset_new_game)
