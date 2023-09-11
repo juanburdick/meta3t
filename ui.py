@@ -147,6 +147,7 @@ class GameController(QWidget):
             board.set_active_board()
         if not self.is_player_one_turn:
             self.switch_turn()
+        self.turn_history.clear()
 
 class MenuBox(QWidget):
     '''Parent class for GroupBoxes for jogging buttons'''
