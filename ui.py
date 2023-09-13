@@ -20,10 +20,9 @@ class GameButton(QPushButton):
         super().__init__(text = text)
         self.ancestor = parent
         self.setFixedSize(size, size)
-        self.layout_position = layout_position
         self.setStyleSheet(get_style(BTN_STYLE.DEFAULT))
+        self.layout_position = layout_position
         self.is_claimed: bool = False
-        self.setIconSize(QSize(_BTN_SIZE,_BTN_SIZE))
 
     def getButtonPosition(self):
         return self.layout_position
@@ -31,20 +30,14 @@ class GameButton(QPushButton):
     def claim(self):
         '''a user has selected this square, gaining control of it'''
         self.is_claimed = True
-        is_player_one_turn = self.ancestor.ancestor.ancestor.who_is_taking_turn(self)
-
-        if is_player_one_turn:
-            self.setStyleSheet(get_style(BTN_STYLE.PL_1))
-        else:
-            self.setStyleSheet(get_style(BTN_STYLE.PL_2))
-            self.setText('o')
+        ref = BTN_STYLE.PL_1 if self.ancestor.ancestor.ancestor.whose_turn(self) else BTN_STYLE.PL_2
+        self.setStyleSheet(get_style(ref))
         self.setDisabled(True)
 
     def resetButtonstate(self):
         '''undo button was clicked, reset this square'''
         self.is_claimed = False
         self.setStyleSheet(get_style(BTN_STYLE.DEFAULT))
-        self.setText('')
         self.setEnabled(True)
 
 class MetaBoard(QWidget):
@@ -109,7 +102,7 @@ class SubGameBoard(QWidget):
 
         claimed_button = GameButton(self, 'x', _CLAIMED_SIZE, (0,0))
         self.groupbox.layout().addWidget(claimed_button, *claimed_button.layout_position)
-        claimed_button.setStyleSheet(get_style(BTN_STYLE.PL_1, default = False))
+        claimed_button.setStyleSheet(get_style(BTN_STYLE.PL_1))
         claimed_button.setDisabled(True)
 
 class GameController(QWidget):
@@ -144,7 +137,7 @@ class GameController(QWidget):
         self.menu.update_turn_indicator(self.is_player_one_turn)
         self.meta.update_turn_indicator(self.is_player_one_turn)
 
-    def who_is_taking_turn(self, button: GameButton) -> bool:
+    def whose_turn(self, button: GameButton) -> bool:
         '''method that returns active player's turn, stores turn history, and updates turn player'''
         ret = self.is_player_one_turn
         self.switch_turn(button)

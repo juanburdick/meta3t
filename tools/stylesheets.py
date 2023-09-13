@@ -22,24 +22,27 @@ class BOX_STYLE(Enum):
     DEFAULT = (22,25,37,255)
     DISABLED = (22,25,25,255)
 
-_ICONS: Dict[Tuple,str] = {BTN_STYLE.PL_1:'icon: url(tic_tac_toe_X.png)',
-                           BTN_STYLE.PL_2:'icon: url(tic_tac_toe_O.png)'}
-
-def get_style(select: BTN_STYLE | BOX_STYLE, default: bool = True) -> str:
+def get_style(select: BTN_STYLE | BOX_STYLE) -> str:
     '''get button style for selected player'''
     if isinstance(select, BTN_STYLE):
+        image = ''
+        if select in [BTN_STYLE.PL_1, BTN_STYLE.PL_2]:
+            image = f"image: url(tic_tac_toe_{'X' if select is BTN_STYLE.PL_1 else 'O'}.png)"
+
         return (f'''QPushButton {{
                         color: rgb(0,0,0);
                         background-color: rgba{select.value};
-                        font: bold {'24pt' if default else '160pt'};
-                        icon: dialog-apply-icon
+                        font: bold 24pt;
+                        {image}
                     }}''')
+
     if isinstance(select, BOX_STYLE):
         return (f'''QGroupBox {{
                         background-color: rgba{select.value};
                         border-width: 4px;
                         border-style: ridge;
                     }}''')
+
     else:
         return ''
 
