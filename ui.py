@@ -70,6 +70,7 @@ class SubGameBoard(QWidget):
         self.ancestor.ancestor.boards[layout_position] = self
 
         self.buttons: List[GameButton] = []
+        self.claimed_button = GameButton(self, 'x', _CLAIMED_SIZE, (0,0))
 
         for position in product((0,1,2), repeat = 2):
             button = GameButton(self, '', _BTN_SIZE, position)
@@ -100,10 +101,17 @@ class SubGameBoard(QWidget):
         for button in self.buttons:
             button.setParent(None)
 
-        claimed_button = GameButton(self, 'x', _CLAIMED_SIZE, (0,0))
-        self.groupbox.layout().addWidget(claimed_button, *claimed_button.layout_position)
-        claimed_button.setStyleSheet(get_style(BTN_STYLE.PL_1))
-        claimed_button.setDisabled(True)
+        self.groupbox.layout().addWidget(self.claimed_button, *self.claimed_button.layout_position)
+        self.claimed_button.setStyleSheet(get_style(BTN_STYLE.PL_1))
+        # claimed_button.setDisabled(True)
+        self.claimed_button.clicked.connect(self.reset_board)
+
+    def reset_board(self):
+        '''reset the board'''
+        self.claimed_button.setParent(None)
+        for button in self.buttons:
+            button.setParent(self)
+            self.groupbox.layout().addWidget(button, *button.layout_position)
 
 class GameController(QWidget):
     '''Used to implement a tabbed system of splitting widgets'''
