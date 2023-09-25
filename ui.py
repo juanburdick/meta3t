@@ -3,7 +3,7 @@
 import sys
 from enum import Enum, auto
 from typing import List, Dict, Tuple, Optional
-from itertools import product
+from itertools import product, cycle
 import numpy as np
 from PyQt5.QtWidgets import QApplication, QGridLayout, QWidget, QMainWindow, QPushButton
 from tools.ui_widgets import GameGroupBox, MenuButton
@@ -20,11 +20,13 @@ class TURN(Enum):
     PL_1 = auto()
     PL_2 = auto()
 
+TURN_CYCLER = cycle((TURN.PL_1, TURN.PL_2))
+
 class GameController:
     '''class for mainting the game data'''
     def __init__(self, parent: 'GameWidget') -> None:
         self.parent = parent
-        self.is_p1_turn: bool = True
+        self.turn = next(TURN_CYCLER)
         self.turn_history: List[GameButton] = []
         self.boards: Dict[Tuple[int,int], SubGameBoard] = {}
         self.buttons: np.ndarray[GameButton] = np.empty((3,3,3,3), dtype = GameButton)
@@ -49,12 +51,12 @@ class GameController:
     def switch_turn(self, source_button: Optional['GameButton'] = None):
         if source_button is not None:
             self.update_boards(source_button.layout_position)
-        self.is_p1_turn = False if self.is_p1_turn else True
+        self.turn = next(TURN_CYCLER)
         self.parent.update_turn_indicators()
 
-    def whose_turn(self, button: 'GameButton') -> bool:
+    def whose_turn(self, button: 'GameButton') -> TURN:
         '''method that returns active player's turn, stores turn history, and updates turn player'''
-        ret = self.is_p1_turn
+        ret = self.turn
         self.switch_turn(button)
         self.turn_history.append(button)
         return ret
@@ -73,7 +75,7 @@ class GameController:
             for button in board.buttons:
                 button.resetButtonstate()
             board.set_active_board()
-        if not self.is_p1_turn:
+        if self.turn is TURN.PL_2:
             self.switch_turn()
         self.turn_history.clear()
 
@@ -103,7 +105,7 @@ class GameButton(QPushButton):
     def claim(self):
         '''a user has selected this square, gaining control of it'''
         self.is_claimed = True
-        ref = SELECT.PL_1 if self.gc.whose_turn(self) else SELECT.PL_2
+        ref = SELECT.PL_1 if self.gc.whose_turn(self) is TURN.PL_1 else SELECT.PL_2
         self.setStyleSheet(get_btn_style(ref))
         self.setDisabled(True)
 
@@ -206,8 +208,8 @@ class GameWidget(QWidget):
 
     def update_turn_indicators(self):
         '''update menu and board turn indicators'''
-        self.menu.update_turn_indicator(self.gc.is_p1_turn)
-        self.meta.update_turn_indicator(self.gc.is_p1_turn)
+        self.menu.update_turn_indicator(self.gc.turn is TURN.PL_1)
+        self.meta.update_turn_indicator(self.gc.turn is TURN.PL_1)
 
 class MenuBox(QWidget):
     '''Parent class for GroupBoxes for jogging buttons'''
