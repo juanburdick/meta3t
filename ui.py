@@ -6,7 +6,7 @@ from itertools import product
 from PyQt5.QtCore import QSize
 from PyQt5.QtWidgets import QApplication, QGridLayout, QWidget, QMainWindow, QPushButton, QStyle
 from tools.ui_widgets import GameGroupBox, MenuButton
-from tools.stylesheets import get_style,BTN_STYLE,BOX_STYLE
+from tools.stylesheets import get_btn_style, get_box_style,SELECT
 
 _GAME_SIZE = 700
 _MENU_SIZE = 80
@@ -20,7 +20,7 @@ class GameButton(QPushButton):
         super().__init__(text = text)
         self.ancestor = parent
         self.setFixedSize(size, size)
-        self.setStyleSheet(get_style(BTN_STYLE.DEFAULT))
+        self.setStyleSheet(get_btn_style(SELECT.DEFAULT_BTN))
         self.layout_position = layout_position
         self.is_claimed: bool = False
 
@@ -30,14 +30,14 @@ class GameButton(QPushButton):
     def claim(self):
         '''a user has selected this square, gaining control of it'''
         self.is_claimed = True
-        ref = BTN_STYLE.PL_1 if self.ancestor.ancestor.ancestor.whose_turn(self) else BTN_STYLE.PL_2
-        self.setStyleSheet(get_style(ref))
+        ref = SELECT.PL_1 if self.ancestor.ancestor.ancestor.whose_turn(self) else SELECT.PL_2
+        self.setStyleSheet(get_btn_style(ref))
         self.setDisabled(True)
 
     def resetButtonstate(self):
         '''undo button was clicked, reset this square'''
         self.is_claimed = False
-        self.setStyleSheet(get_style(BTN_STYLE.DEFAULT))
+        self.setStyleSheet(get_btn_style(SELECT.DEFAULT_BTN))
         self.setEnabled(True)
 
 class MetaBoard(QWidget):
@@ -49,7 +49,7 @@ class MetaBoard(QWidget):
     def __init__(self, parent: 'GameController', size: int, layout_position: Tuple[int,...] = (0,0)):
         super().__init__(parent)
         self.ancestor = parent
-        self.groupbox = GameGroupBox(get_style(BOX_STYLE.PL_1), size, size)
+        self.groupbox = GameGroupBox(get_box_style(SELECT.PL_1), size, size)
         self.layout_position = layout_position
 
         for position in self.GRID:
@@ -58,14 +58,14 @@ class MetaBoard(QWidget):
 
     def update_turn_indicator(self, is_player_one: bool):
         '''update the color of the groupbox to indicate which player's turn it is'''
-        self.groupbox.setStyleSheet(get_style(BOX_STYLE.PL_1 if is_player_one else BOX_STYLE.PL_2))
+        self.groupbox.setStyleSheet(get_box_style(SELECT.PL_1 if is_player_one else SELECT.PL_2))
 
 class SubGameBoard(QWidget):
     '''Contains a subgame of tic tac toe'''
     def __init__(self, parent: MetaBoard, size: int, layout_position : Tuple[int,...] = (0,0)):
         super().__init__(parent)
         self.ancestor = parent
-        self.groupbox = GameGroupBox(get_style(BOX_STYLE.DEFAULT), size, size)
+        self.groupbox = GameGroupBox(get_box_style(SELECT.DEFAULT_BOX), size, size)
         self.layout_position = layout_position
         self.ancestor.ancestor.boards[layout_position] = self
 
@@ -83,18 +83,18 @@ class SubGameBoard(QWidget):
 
     def set_active_board(self):
         '''this is the board the current player will be forced to play in, set all buttons in it active'''
-        self.groupbox.setStyleSheet(get_style(BOX_STYLE.DEFAULT))
+        self.groupbox.setStyleSheet(get_box_style(SELECT.DEFAULT_BOX))
         for button in self.buttons:
             if not button.is_claimed:
                 button.resetButtonstate()
 
     def disable_board(self):
         '''this board is not available to the player this turn, disable all buttons in it'''
-        self.groupbox.setStyleSheet(get_style(BOX_STYLE.DISABLED))
+        self.groupbox.setStyleSheet(get_box_style(SELECT.DISABLED_BOX))
         for button in self.buttons:
             button.setDisabled(True)
             if not button.is_claimed:
-                button.setStyleSheet(get_style(BTN_STYLE.DISABLED))
+                button.setStyleSheet(get_btn_style(SELECT.DISABLED_BTN))
 
     def claim_board(self):
         '''a player has won this board, display that player's symbol and lock the board'''
@@ -102,7 +102,7 @@ class SubGameBoard(QWidget):
             button.setParent(None)
 
         self.groupbox.layout().addWidget(self.claimed_button, *self.claimed_button.layout_position)
-        self.claimed_button.setStyleSheet(get_style(BTN_STYLE.PL_1))
+        self.claimed_button.setStyleSheet(get_btn_style(SELECT.PL_1))
         # claimed_button.setDisabled(True)
         self.claimed_button.clicked.connect(self.reset_board)
 
@@ -176,7 +176,7 @@ class MenuBox(QWidget):
         super().__init__(parent)
         self.ancestor = parent
         self.layout_position = layout_position
-        self.groupbox = GameGroupBox(get_style(BOX_STYLE.PL_1), width = _GAME_SIZE, height = _MENU_SIZE)
+        self.groupbox = GameGroupBox(get_box_style(SELECT.PL_1), width = _GAME_SIZE, height = _MENU_SIZE)
 
         reset_button = MenuButton("New Game", (0,0,1,1))
         reset_button.clicked.connect(self.ancestor.reset_new_game)
@@ -192,7 +192,7 @@ class MenuBox(QWidget):
 
     def update_turn_indicator(self, is_player_one: bool):
         '''update the color of the groupbox to indicate which player's turn it is'''
-        self.groupbox.setStyleSheet(get_style(BOX_STYLE.PL_1 if is_player_one else BOX_STYLE.PL_2))
+        self.groupbox.setStyleSheet(get_box_style(SELECT.PL_1 if is_player_one else SELECT.PL_2))
 
 class HostWindow(QMainWindow):
     '''The main game window'''
