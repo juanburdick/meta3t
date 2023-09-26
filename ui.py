@@ -2,11 +2,11 @@
 # pylint: disable=no-name-in-module, import-error, fixme
 import sys
 from enum import Enum
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Callable
 from itertools import product, cycle
 import numpy as np
 from PyQt5.QtWidgets import QApplication, QGridLayout, QWidget, QMainWindow, QPushButton
-from tools.ui_widgets import GameGroupBox, MenuButton
+from tools.ui_widgets import MenuButton, GameButton, GameGroupBox, TURN, TURN_CYCLER
 from tools.stylesheets import get_btn_style, get_box_style,SELECT
 
 _GAME_SIZE = 700
@@ -14,13 +14,6 @@ _MENU_SIZE = 80
 _BOX_SIZE = 220
 _BTN_SIZE = 60
 _CLAIMED_SIZE = 195
-
-class TURN(Enum):
-    '''Enum for tracking turn player'''
-    PL_1 = 1
-    PL_2 = 2
-
-TURN_CYCLER = cycle((TURN.PL_1, TURN.PL_2))
 
 class GameController:
     '''class for mainting the game data'''
@@ -31,14 +24,13 @@ class GameController:
         self.boards: Dict[Tuple[int,int], SubGameBoard] = {}
         self.buttons: np.ndarray[GameButton] = np.empty((3,3,3,3), dtype = GameButton)
 
-    def register(self, board: 'SubGameBoard', button: Optional['GameButton'] = None):
+    def register_board(self, board: 'SubGameBoard'):
         '''allows game pieces to register themself with the game controller'''
-        if button is None:
-            self.boards[board.layout_position] = board
-            return None
+        self.boards[board.layout_position] = board
 
-        self.buttons[board.layout_position][button.layout_position] = button
-        return None
+    def register_button(self, board_position: Tuple[int,int], button: Optional[GameButton]):
+        '''allows game pieces to register themself with the game controller'''
+        self.buttons[board_position][button.layout_position] = button
 
     def update_boards(self, target: Tuple[int,int]):
         '''Try to activate a board (if it's already claimed, activate all unclaimed boards instead)'''
@@ -55,7 +47,7 @@ class GameController:
                 if not board.is_claimed and board is not target_board:
                     board.disable_board()
 
-    def take_turn(self, button: 'GameButton') -> TURN:
+    def take_turn(self, button: GameButton) -> TURN:
         '''method that returns active player's turn, stores turn history, and updates turn player'''
         self.update_boards(target = button.layout_position)
         self.turn_history.append(button)
@@ -91,36 +83,6 @@ class GameController:
             self.parent.update_turn_indicators()
         self.turn_history.clear()
 
-class GameButton(QPushButton):
-    """A standardized button for the game"""
-    def __init__(self, parent: 'SubGameBoard', game_controller: GameController, text: str, size: int, layout_position: Tuple[int,...] = (0,0)):
-        super().__init__(text = text)
-        self.ancestor = parent
-        self.gc = game_controller
-        self.setFixedSize(size, size)
-        self.setStyleSheet(get_btn_style(SELECT.DEFAULT_BTN))
-        self.layout_position = layout_position
-        self.is_claimed: bool = False
-
-        self.gc.register(self.ancestor, self)
-
-    def getButtonPosition(self):
-        return self.layout_position
-
-    def claim(self):
-        '''a user has selected this square, gaining control of it'''
-        self.is_claimed = True
-        turn = self.gc.take_turn(self)
-        ref = SELECT.PL_1 if turn is TURN.PL_1 else SELECT.PL_2
-        self.setStyleSheet(get_btn_style(ref))
-        self.setDisabled(True)
-
-    def resetButtonstate(self):
-        '''undo button was clicked, reset this square'''
-        self.is_claimed = False
-        self.setStyleSheet(get_btn_style(SELECT.DEFAULT_BTN))
-        self.setEnabled(True)
-
 class MetaBoard(QWidget):
     '''Contain and track the main game/game board'''
     GRID = [(0,0), (0,1), (0,2),
@@ -144,7 +106,7 @@ class MetaBoard(QWidget):
 
 class SubGameBoard(QWidget):
     '''Contains a subgame of tic tac toe'''
-    def __init__(self, parent: MetaBoard, game_controller: GameController, size: int, layout_position : Tuple[int,...] = (0,0)):
+    def __init__(self, parent: MetaBoard, game_controller: GameController, size: int, layout_position : Tuple[int,int] = (0,0)):
         super().__init__(parent)
         self.ancestor = parent
         self.gc = game_controller
@@ -153,10 +115,10 @@ class SubGameBoard(QWidget):
         self.is_claimed: bool = False
 
         self.buttons: List[GameButton] = []
-        self.claimed_button = GameButton(self, self.gc, 'x', _CLAIMED_SIZE, (0,0))
+        self.claimed_button = GameButton('x', _CLAIMED_SIZE, (0,0), self.layout_position, self.gc.take_turn, self.gc.register_button)
 
         for position in product((0,1,2), repeat = 2):
-            button = GameButton(self, self.gc, '', _BTN_SIZE, position)
+            button = GameButton('', _BTN_SIZE, position, self.layout_position, self.gc.take_turn, self.gc.register_button)
             button.clicked.connect(button.claim)
             self.groupbox.layout().addWidget(button, *position) # type: ignore
             self.buttons.append(button)
@@ -164,7 +126,7 @@ class SubGameBoard(QWidget):
         if self.layout_position == (0,0):
             self.claim_board()
 
-        self.gc.register(self)
+        self.gc.register_board(self)
 
     def set_active_board(self):
         '''this is the board the current player will be forced to play in, set all buttons in it active'''
