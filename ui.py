@@ -85,10 +85,6 @@ class GameController:
 
 class MetaBoard(QWidget):
     '''Contain and track the main game/game board'''
-    GRID = [(0,0), (0,1), (0,2),
-            (1,0), (1,1), (1,2),
-            (2,0), (2,1), (2,2)]
-
     def __init__(self, parent: 'GameWidget', game_controller: GameController, size: int, layout_position: Tuple[int,...] = (0,0)):
         super().__init__(parent)
         self.ancestor = parent
@@ -96,8 +92,8 @@ class MetaBoard(QWidget):
         self.groupbox = GameGroupBox(get_box_style(SELECT.PL_1), size, size)
         self.layout_position = layout_position
 
-        for position in self.GRID:
-            subgame = SubGameBoard(self, self.gc, _BOX_SIZE, position)
+        for position in product((0,1,2), repeat = 2):
+            subgame = SubGameBoard(self.gc, _BOX_SIZE, position)
             self.groupbox.layout().addWidget(subgame.groupbox, *subgame.layout_position) # type: ignore
 
     def update_turn_indicator(self, is_player_one: bool):
@@ -106,9 +102,8 @@ class MetaBoard(QWidget):
 
 class SubGameBoard(QWidget):
     '''Contains a subgame of tic tac toe'''
-    def __init__(self, parent: MetaBoard, game_controller: GameController, size: int, layout_position : Tuple[int,int] = (0,0)):
-        super().__init__(parent)
-        self.ancestor = parent
+    def __init__(self, game_controller: GameController, size: int, layout_position : Tuple[int,int] = (0,0)):
+        super().__init__()
         self.gc = game_controller
         self.groupbox = GameGroupBox(get_box_style(SELECT.DEFAULT_BOX), size, size)
         self.layout_position = layout_position
