@@ -52,8 +52,8 @@ class GameButton(QPushButton):
     def __init__(self,
                  text: str,
                  size: int,
-                 layout_position: Tuple[int,int],
-                 parent_position: Tuple[int,int],
+                 layout_position: Tuple[int,...],
+                 parent_position: Tuple[int,...],
                  get_turn_player: Callable[['GameButton'], TURN],
                  registration: Callable[[Tuple[int,int],'GameButton'], None],
                  ):

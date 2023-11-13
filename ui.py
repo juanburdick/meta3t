@@ -21,8 +21,8 @@ class GameController:
         self.parent = parent
         self.turn = next(TURN_CYCLER)
         self.turn_history: List[GameButton] = []
-        self.boards: Dict[Tuple[int,int], SubGameBoard] = {}
-        self.buttons: np.ndarray[GameButton] = np.empty((3,3,3,3), dtype = GameButton)
+        self.boards: Dict[Tuple[int,...], SubGameBoard] = {}
+        self.buttons: np.ndarray[GameButton] = np.empty((3,3,3,3), dtype = GameButton) # type: ignore
 
     def register_board(self, board: 'SubGameBoard'):
         '''allows game pieces to register themself with the game controller'''
@@ -32,7 +32,7 @@ class GameController:
         '''allows game pieces to register themself with the game controller'''
         self.buttons[board_position][button.layout_position] = button
 
-    def update_boards(self, target: Tuple[int,int]):
+    def update_boards(self, target: Tuple[int,...]):
         '''Try to activate a board (if it's already claimed, activate all unclaimed boards instead)'''
         target_board = self.boards[target]
 
@@ -102,7 +102,7 @@ class MetaBoard(QWidget):
 
 class SubGameBoard(QWidget):
     '''Contains a subgame of tic tac toe'''
-    def __init__(self, game_controller: GameController, size: int, layout_position : Tuple[int,int] = (0,0)):
+    def __init__(self, game_controller: GameController, size: int, layout_position : Tuple[int,...] = (0,0)):
         super().__init__()
         self.gc = game_controller
         self.groupbox = GameGroupBox(get_box_style(SELECT.DEFAULT_BOX), size, size)
