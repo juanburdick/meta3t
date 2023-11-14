@@ -55,7 +55,7 @@ class GameButton(QPushButton):
                  layout_position: Tuple[int,...],
                  parent_position: Tuple[int,...],
                  get_turn_player: Callable[['GameButton'], TURN],
-                 registration: Callable[[Tuple[int,int],'GameButton'], None],
+                 registration: Callable[[Tuple[int,...],'GameButton'], None],
                  ):
         super().__init__(text = text)
         self.setFixedSize(size, size)

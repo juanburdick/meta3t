@@ -28,7 +28,7 @@ class GameController:
         '''allows game pieces to register themself with the game controller'''
         self.boards[board.layout_position] = board
 
-    def register_button(self, board_position: Tuple[int,int], button: Optional[GameButton]):
+    def register_button(self, board_position: Tuple[int,...], button: Optional[GameButton]):
         '''allows game pieces to register themself with the game controller'''
         self.buttons[board_position][button.layout_position] = button
 
@@ -85,15 +85,19 @@ class GameController:
 
 class MetaBoard(QWidget):
     '''Contain and track the main game/game board'''
-    def __init__(self, parent: 'GameWidget', game_controller: GameController, size: int, layout_position: Tuple[int,...] = (0,0)):
-        super().__init__(parent)
-        self.ancestor = parent
-        self.gc = game_controller
+    def __init__(self,
+                 size: int,
+                 layout_position: Tuple[int,...],
+                 board_registry: Callable[['SubGameBoard'], None],
+                 button_callables: Tuple[Callable[[GameButton], TURN],
+                                         Callable[[Tuple[int,...],GameButton],None]],
+                 ):
+        super().__init__()
         self.groupbox = GameGroupBox(get_box_style(SELECT.PL_1), size, size)
         self.layout_position = layout_position
 
         for position in product((0,1,2), repeat = 2):
-            subgame = SubGameBoard(self.gc, _BOX_SIZE, position)
+            subgame = SubGameBoard(_BOX_SIZE, position, board_registry, button_callables)
             self.groupbox.layout().addWidget(subgame.groupbox, *subgame.layout_position) # type: ignore
 
     def update_turn_indicator(self, is_player_one: bool):
@@ -102,18 +106,24 @@ class MetaBoard(QWidget):
 
 class SubGameBoard(QWidget):
     '''Contains a subgame of tic tac toe'''
-    def __init__(self, game_controller: GameController, size: int, layout_position : Tuple[int,...] = (0,0)):
+    def __init__(self,
+                 size: int,
+                 layout_position : Tuple[int,...],
+                 registration: Callable[['SubGameBoard'], None],
+                 button_callables: Tuple[Callable[[GameButton], TURN],
+                                         Callable[[Tuple[int,...],GameButton],None]],
+                ):
         super().__init__()
-        self.gc = game_controller
+
         self.groupbox = GameGroupBox(get_box_style(SELECT.DEFAULT_BOX), size, size)
         self.layout_position = layout_position
         self.is_claimed: bool = False
 
         self.buttons: List[GameButton] = []
-        self.claimed_button = GameButton('x', _CLAIMED_SIZE, (0,0), self.layout_position, self.gc.take_turn, self.gc.register_button)
+        self.claimed_button = GameButton('x', _CLAIMED_SIZE, (0,0), self.layout_position, *button_callables)
 
         for position in product((0,1,2), repeat = 2):
-            button = GameButton('', _BTN_SIZE, position, self.layout_position, self.gc.take_turn, self.gc.register_button)
+            button = GameButton('', _BTN_SIZE, position, self.layout_position, *button_callables)
             button.clicked.connect(button.claim)
             self.groupbox.layout().addWidget(button, *position) # type: ignore
             self.buttons.append(button)
@@ -121,7 +131,7 @@ class SubGameBoard(QWidget):
         if self.layout_position == (0,0):
             self.claim_board()
 
-        self.gc.register_board(self)
+        registration(self)
 
     def set_active_board(self):
         '''this is the board the current player will be forced to play in, set all buttons in it active'''
@@ -166,8 +176,8 @@ class GameWidget(QWidget):
 
         self.gc = GameController(self)
 
-        self.meta = MetaBoard(self, self.gc, _GAME_SIZE, (0,0,1,1))
-        self.menu = MenuBox(self, self.gc, (1,0,1,1))
+        self.meta = MetaBoard(_GAME_SIZE, (0,0,1,1), self.gc.register_board, (self.gc.take_turn, self.gc.register_button))
+        self.menu = MenuBox((1,0,1,1), self.gc.reset_new_game, self.gc.undo_last_move, self.ancestor.close)
 
         self.layout().addWidget(self.meta.groupbox, *self.meta.layout_position)
         self.layout().addWidget(self.menu.groupbox, *self.menu.layout_position)
@@ -179,23 +189,26 @@ class GameWidget(QWidget):
 
 class MenuBox(QWidget):
     '''Parent class for GroupBoxes for jogging buttons'''
-    def __init__(self, parent: 'GameWidget', game_controller: GameController, layout_position: Tuple[int,...] = (0,0)):
-        super().__init__(parent)
-        self.ancestor = parent
-        self.gc = game_controller
+    def __init__(self,
+                 layout_position: Tuple[int,...],
+                 new_game_method: Callable,
+                 undo_method: Callable,
+                 exit_method: Callable,
+                 ):
+        super().__init__()
         self.layout_position = layout_position
         self.groupbox = GameGroupBox(get_box_style(SELECT.PL_1), width = _GAME_SIZE, height = _MENU_SIZE)
 
         reset_button = MenuButton("New Game", (0,0,1,1))
-        reset_button.clicked.connect(self.gc.reset_new_game)
+        reset_button.clicked.connect(new_game_method)
         self.groupbox.layout().addWidget(reset_button, *reset_button.layout_position)
 
         undo_button = MenuButton("Undo", (0,1,1,1))
-        undo_button.clicked.connect(self.gc.undo_last_move)
+        undo_button.clicked.connect(undo_method)
         self.groupbox.layout().addWidget(undo_button, *undo_button.layout_position)
 
         exit_button = MenuButton("Exit Game", (0,2,1,1))
-        exit_button.clicked.connect(self.ancestor.ancestor.close)
+        exit_button.clicked.connect(exit_method)
         self.groupbox.layout().addWidget(exit_button, *exit_button.layout_position)
 
     def update_turn_indicator(self, is_player_one: bool):
