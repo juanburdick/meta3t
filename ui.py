@@ -2,7 +2,7 @@
 # pylint: disable=no-name-in-module, import-error, fixme
 import sys
 from enum import Enum
-from typing import List, Dict, Tuple, Optional, Callable, Protocol
+from typing import List, Dict, Tuple, Optional, Callable, Protocol, Any
 from itertools import product, cycle
 import numpy as np
 from PyQt5.QtWidgets import QApplication, QGridLayout, QWidget, QMainWindow, QPushButton
@@ -28,17 +28,18 @@ class GameController:
         self.boards: Dict[Tuple[int,...], SubGameBoard] = {}
         self.buttons: np.ndarray[GameButton] = np.empty((3,3,3,3), dtype = GameButton) # type: ignore
 
-    def register_board(self, board: 'SubGameBoard'):
+    def register(self, to_reg, key: Tuple[int,...] | None = None):
         '''allows game pieces to register themself with the game controller'''
-        self.boards[board.layout_position] = board
+        if isinstance(to_reg, SubGameBoard):
+            self.boards[to_reg.layout_position] = to_reg
 
-    def register_button(self, board_position: Tuple[int,...], button: Optional[GameButton]):
-        '''allows game pieces to register themself with the game controller'''
-        self.buttons[board_position][button.layout_position] = button
+        elif isinstance(to_reg, GameButton):
+            if not key:
+                raise KeyError('Key is required when GameButton is registering!')
+            self.buttons[key][to_reg.layout_position] = to_reg
 
-    def register_turn_indicator(self, indicator: TurnIndicator):
-        '''allows game pieces to register themself with the game controller'''
-        self.turn_indicators.append(indicator)
+        elif hasattr(to_reg, 'update_turn_indicator') and callable(to_reg.update_turn_indicator):
+            self.turn_indicators.append(to_reg)
 
     def update_turn_indicators(self):
         '''Call all registered turn indicators to update their displays'''
@@ -101,20 +102,18 @@ class MetaBoard(QWidget):
     def __init__(self,
                  size: int,
                  layout_position: Tuple[int,...],
-                 registration: Callable[[TurnIndicator], None],
-                 board_registry: Callable[['SubGameBoard'], None],
-                 button_callables: Tuple[Callable[[GameButton], TURN],
-                                         Callable[[Tuple[int,...],GameButton],None]],
+                 get_turn_player: Callable[[GameButton], TURN],
+                 registration: Callable[[Any,Optional[Tuple[int,...]]], None],
                  ):
         super().__init__()
         self.groupbox = GameGroupBox(get_box_style(SELECT.PL_1), size, size)
         self.layout_position = layout_position
 
         for position in product((0,1,2), repeat = 2):
-            subgame = SubGameBoard(_BOX_SIZE, position, board_registry, button_callables)
+            subgame = SubGameBoard(_BOX_SIZE, position, get_turn_player, registration)
             self.groupbox.layout().addWidget(subgame.groupbox, *subgame.layout_position) # type: ignore
 
-        registration(self)
+        registration(self, None)
 
     def update_turn_indicator(self, is_player_one: bool):
         '''update the color of the groupbox to indicate which player's turn it is'''
@@ -125,9 +124,8 @@ class SubGameBoard(QWidget):
     def __init__(self,
                  size: int,
                  layout_position : Tuple[int,...],
-                 registration: Callable[['SubGameBoard'], None],
-                 button_callables: Tuple[Callable[[GameButton], TURN],
-                                         Callable[[Tuple[int,...],GameButton],None]],
+                 get_turn_player: Callable[[GameButton], TURN],
+                 registration: Callable[[Any,Optional[Tuple[int,...]]], None],
                 ):
         super().__init__()
 
@@ -136,10 +134,10 @@ class SubGameBoard(QWidget):
         self.is_claimed: bool = False
 
         self.buttons: List[GameButton] = []
-        self.claimed_button = GameButton('x', _CLAIMED_SIZE, (0,0), self.layout_position, *button_callables)
+        self.claimed_button = GameButton('x', _CLAIMED_SIZE, (0,0), self.layout_position, get_turn_player, registration)
 
         for position in product((0,1,2), repeat = 2):
-            button = GameButton('', _BTN_SIZE, position, self.layout_position, *button_callables)
+            button = GameButton('', _BTN_SIZE, position, self.layout_position, get_turn_player, registration)
             button.clicked.connect(button.claim)
             self.groupbox.layout().addWidget(button, *position) # type: ignore
             self.buttons.append(button)
@@ -147,7 +145,7 @@ class SubGameBoard(QWidget):
         if self.layout_position == (0,0):
             self.claim_board()
 
-        registration(self)
+        registration(self, None)
 
     def set_active_board(self):
         '''this is the board the current player will be forced to play in, set all buttons in it active'''
@@ -192,12 +190,11 @@ class GameWidget(QWidget):
 
         self.meta = MetaBoard(size = _GAME_SIZE,
                               layout_position = (0,0,1,1),
-                              registration = self.gc.register_turn_indicator,
-                              board_registry = self.gc.register_board,
-                              button_callables = (self.gc.take_turn, self.gc.register_button))
+                              get_turn_player = self.gc.take_turn,
+                              registration = self.gc.register)
 
         self.menu = MenuBox(layout_position = (1,0,1,1),
-                            registration = self.gc.register_turn_indicator,
+                            registration = self.gc.register,
                             new_game_method = self.gc.reset_new_game,
                             undo_method = self.gc.undo_last_move,
                             exit_method = parent.close)

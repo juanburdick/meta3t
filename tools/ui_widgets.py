@@ -2,7 +2,7 @@
 # pylint: disable=C0321, no-name-in-module, too-many-arguments
 from enum import Enum
 from itertools import cycle
-from typing import Tuple, Callable
+from typing import Tuple, Callable, Any, Optional
 from PyQt5.QtWidgets import QPushButton, QLabel, QGroupBox, QGridLayout
 from tools.stylesheets import SELECT, get_btn_style, BTN_STYLE_REF
 
@@ -55,13 +55,13 @@ class GameButton(QPushButton):
                  layout_position: Tuple[int,...],
                  parent_position: Tuple[int,...],
                  get_turn_player: Callable[['GameButton'], TURN],
-                 registration: Callable[[Tuple[int,...],'GameButton'], None],
+                 registration: Callable[[Any,Optional[Tuple[int,...]]], None],
                  ):
         super().__init__(text = text)
         self.setFixedSize(size, size)
         self.layout_position = layout_position
         self.take_turn = get_turn_player
-        registration(parent_position, self)
+        registration(self, parent_position)
 
         self.setStyleSheet(get_btn_style(SELECT.DEFAULT_BTN))
         self.is_claimed: bool = False
