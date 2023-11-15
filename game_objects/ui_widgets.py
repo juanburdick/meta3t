@@ -4,7 +4,7 @@ from enum import Enum
 from itertools import cycle
 from typing import Tuple, Callable, Any, Optional
 from PyQt5.QtWidgets import QPushButton, QLabel, QGroupBox, QGridLayout
-from tools.stylesheets import SELECT, get_btn_style, BTN_STYLE_REF
+from game_objects.stylesheets import SELECT, get_btn_style, BTN_STYLE_REF
 
 class TURN(Enum):
     '''Enum for tracking turn player'''

@@ -6,8 +6,8 @@ from typing import List, Dict, Tuple, Optional, Callable, Protocol, Any
 from itertools import product, cycle
 import numpy as np
 from PyQt5.QtWidgets import QApplication, QGridLayout, QWidget, QMainWindow, QPushButton
-from tools.ui_widgets import MenuButton, GameButton, GameGroupBox, TURN, TURN_CYCLER
-from tools.stylesheets import get_btn_style, get_box_style,SELECT
+from game_objects.ui_widgets import MenuButton, GameButton, GameGroupBox, TURN, TURN_CYCLER
+from game_objects.stylesheets import get_btn_style, get_box_style,SELECT
 
 _GAME_SIZE = 700
 _MENU_SIZE = 80
