@@ -1,205 +1,96 @@
-'''Create the startup window.'''
+'''Entry point for the game, containing launching method and top-level game objects for maintaining the state'''
 # pylint: disable=no-name-in-module, import-error, fixme
 import sys
-from typing import List, Dict, Tuple, Optional
-from itertools import product
-from PyQt5.QtCore import QSize
-from PyQt5.QtWidgets import QApplication, QGridLayout, QWidget, QMainWindow, QPushButton, QStyle
-from tools.ui_widgets import GameGroupBox, MenuButton
-from tools.stylesheets import get_style,BTN_STYLE,BOX_STYLE
+from itertools import cycle
+from typing import List, Dict, Tuple, Protocol
+import numpy as np
+from PyQt5.QtWidgets import QApplication, QGridLayout, QWidget, QMainWindow
+from game_objects.boards import MetaBoard, SubGameBoard, MenuBox
+from game_objects.buttons import GameButton, TURN
 
-_GAME_SIZE = 700
-_MENU_SIZE = 80
-_BOX_SIZE = 220
-_BTN_SIZE = 60
-_CLAIMED_SIZE = 195
+TURN_CYCLER = cycle((TURN.PL_1, TURN.PL_2))
 
-class GameButton(QPushButton):
-    """A standardized button for the game"""
-    def __init__(self, parent: 'SubGameBoard', text: str, size: int, layout_position: Tuple[int,...] = (0,0)):
-        super().__init__(text = text)
-        self.ancestor = parent
-        self.setFixedSize(size, size)
-        self.setStyleSheet(get_style(BTN_STYLE.DEFAULT))
-        self.layout_position = layout_position
-        self.is_claimed: bool = False
+class TurnIndicator(Protocol):
+    def update_turn_indicator(self, _: TURN) -> None:
+        return
 
-    def getButtonPosition(self):
-        return self.layout_position
-
-    def claim(self):
-        '''a user has selected this square, gaining control of it'''
-        self.is_claimed = True
-        ref = BTN_STYLE.PL_1 if self.ancestor.ancestor.ancestor.whose_turn(self) else BTN_STYLE.PL_2
-        self.setStyleSheet(get_style(ref))
-        self.setDisabled(True)
-
-    def resetButtonstate(self):
-        '''undo button was clicked, reset this square'''
-        self.is_claimed = False
-        self.setStyleSheet(get_style(BTN_STYLE.DEFAULT))
-        self.setEnabled(True)
-
-class MetaBoard(QWidget):
-    '''Contain and track the main game/game board'''
-    GRID = [(0,0), (0,1), (0,2),
-            (1,0), (1,1), (1,2),
-            (2,0), (2,1), (2,2)]
-
-    def __init__(self, parent: 'GameController', size: int, layout_position: Tuple[int,...] = (0,0)):
-        super().__init__(parent)
-        self.ancestor = parent
-        self.groupbox = GameGroupBox(get_style(BOX_STYLE.PL_1), size, size)
-        self.layout_position = layout_position
-
-        for position in self.GRID:
-            subgame = SubGameBoard(self, _BOX_SIZE, position)
-            self.groupbox.layout().addWidget(subgame.groupbox, *subgame.layout_position) # type: ignore
-
-    def update_turn_indicator(self, is_player_one: bool):
-        '''update the color of the groupbox to indicate which player's turn it is'''
-        self.groupbox.setStyleSheet(get_style(BOX_STYLE.PL_1 if is_player_one else BOX_STYLE.PL_2))
-
-class SubGameBoard(QWidget):
-    '''Contains a subgame of tic tac toe'''
-    def __init__(self, parent: MetaBoard, size: int, layout_position : Tuple[int,...] = (0,0)):
-        super().__init__(parent)
-        self.ancestor = parent
-        self.groupbox = GameGroupBox(get_style(BOX_STYLE.DEFAULT), size, size)
-        self.layout_position = layout_position
-        self.ancestor.ancestor.boards[layout_position] = self
-
-        self.buttons: List[GameButton] = []
-        self.claimed_button = GameButton(self, 'x', _CLAIMED_SIZE, (0,0))
-
-        for position in product((0,1,2), repeat = 2):
-            button = GameButton(self, '', _BTN_SIZE, position)
-            button.clicked.connect(button.claim)
-            self.groupbox.layout().addWidget(button, *position) # type: ignore
-            self.buttons.append(button)
-
-        if self.layout_position == (0,0):
-            self.claim_board()
-
-    def set_active_board(self):
-        '''this is the board the current player will be forced to play in, set all buttons in it active'''
-        self.groupbox.setStyleSheet(get_style(BOX_STYLE.DEFAULT))
-        for button in self.buttons:
-            if not button.is_claimed:
-                button.resetButtonstate()
-
-    def disable_board(self):
-        '''this board is not available to the player this turn, disable all buttons in it'''
-        self.groupbox.setStyleSheet(get_style(BOX_STYLE.DISABLED))
-        for button in self.buttons:
-            button.setDisabled(True)
-            if not button.is_claimed:
-                button.setStyleSheet(get_style(BTN_STYLE.DISABLED))
-
-    def claim_board(self):
-        '''a player has won this board, display that player's symbol and lock the board'''
-        for button in self.buttons:
-            button.setParent(None)
-
-        self.groupbox.layout().addWidget(self.claimed_button, *self.claimed_button.layout_position)
-        self.claimed_button.setStyleSheet(get_style(BTN_STYLE.PL_1))
-        # claimed_button.setDisabled(True)
-        self.claimed_button.clicked.connect(self.reset_board)
-
-    def reset_board(self):
-        '''reset the board'''
-        self.claimed_button.setParent(None)
-        for button in self.buttons:
-            button.setParent(self)
-            self.groupbox.layout().addWidget(button, *button.layout_position)
-
-class GameController(QWidget):
-    '''Used to implement a tabbed system of splitting widgets'''
-    def __init__(self, parent: 'HostWindow'):
-        super().__init__(parent)
-        self.ancestor = parent
-        self.setLayout(QGridLayout())
-
-        self.is_player_one_turn: bool = True
+class GameController:
+    '''class for mainting the game data'''
+    def __init__(self) -> None:
+        self.turn = next(TURN_CYCLER)
         self.turn_history: List[GameButton] = []
-        self.boards: Dict[Tuple[int,int], SubGameBoard] = {}
+        self.turn_indicators: List[TurnIndicator] = []
+        self.boards: Dict[Tuple[int,...], SubGameBoard] = {}
+        self.buttons: np.ndarray[GameButton] = np.empty((3,3,3,3), dtype = GameButton) # type: ignore
 
-        self.meta = MetaBoard(self, _GAME_SIZE, (0,0,1,1))
-        self.menu = MenuBox(self, (1,0,1,1))
+    def register(self, to_reg, key: Tuple[int,...] | None = None):
+        '''allows game pieces to register themself with the game controller'''
+        if isinstance(to_reg, SubGameBoard): self.boards[to_reg.layout_position] = to_reg
+        elif isinstance(to_reg, GameButton) and key is not None: self.buttons[key][to_reg.layout_position] = to_reg
+        elif hasattr(to_reg, 'update_turn_indicator') and callable(to_reg.update_turn_indicator): self.turn_indicators.append(to_reg)
 
-        self.layout().addWidget(self.meta.groupbox, *self.meta.layout_position)
-        self.layout().addWidget(self.menu.groupbox, *self.menu.layout_position)
+    def show_next_turn(self):
+        '''Call all registered turn indicators to update their displays'''
+        self.turn = next(TURN_CYCLER)
+        for indicator in self.turn_indicators:
+            indicator.update_turn_indicator(self.turn)
 
-    def update_boards(self, target: Tuple[int,int]):
-        '''Set boards active or inactive based on the last move'''
-        for layout_position, board in self.boards.items():
-            if layout_position == target:
+    def update_boards(self, target: Tuple[int,...]):
+        '''Try to activate a board (if it's already claimed, activate all unclaimed boards instead)'''
+        target_board = self.boards[target]
+
+        for board in self.boards.values():
+            board.disable_board() # disable all boards
+            if target_board.is_claimed and not board.is_claimed: # if target board is claimed, we'll enable all other NOT claimed boards
                 board.set_active_board()
-            else:
-                board.disable_board()
 
-    def switch_turn(self, source_button: Optional[GameButton] = None):
-        if source_button is not None:
-            self.update_boards(source_button.layout_position)
-        self.is_player_one_turn = False if self.is_player_one_turn else True
-        self.menu.update_turn_indicator(self.is_player_one_turn)
-        self.meta.update_turn_indicator(self.is_player_one_turn)
+        if not target_board.is_claimed: # if target board isn't claimed, we just disabled every board including target
+            target_board.set_active_board() # so enable just the target board
 
-    def whose_turn(self, button: GameButton) -> bool:
+    def take_turn(self, button: GameButton) -> TURN:
         '''method that returns active player's turn, stores turn history, and updates turn player'''
-        ret = self.is_player_one_turn
-        self.switch_turn(button)
+        player = self.turn
         self.turn_history.append(button)
-        return ret
+        self.update_boards(target = button.layout_position)
+        self.show_next_turn()
+        return player
 
     def undo_last_move(self):
         '''undo the most recent move'''
-        if len(self.turn_history) > 1:
-            self.turn_history.pop().resetButtonstate()
-            self.switch_turn(self.turn_history[-1])
-        else:
-            self.reset_new_game()
+        if len(self.turn_history) < 2: self.reset_new_game(); return # if there's only one turn, just reset
+
+        self.turn_history.pop().resetButtonstate() # remove the last play and reset the button before discarding
+        previous = self.turn_history[-1] # to reset the board, we need to act as if the prev turn was just taken
+        self.update_boards(target = previous.layout_position)
+        self.show_next_turn()
 
     def reset_new_game(self):
         '''reset the board for a new game'''
-        for board in self.boards.values():
-            for button in board.buttons:
-                button.resetButtonstate()
-            board.set_active_board()
-        if not self.is_player_one_turn:
-            self.switch_turn()
         self.turn_history.clear()
+        if self.turn is TURN.PL_2: self.show_next_turn()
+        for board in self.boards.values():
+            board.reset_board(new_game = True)
+            board.set_active_board()
 
-class MenuBox(QWidget):
-    '''Parent class for GroupBoxes for jogging buttons'''
-    def __init__(self, parent: 'GameController', layout_position: Tuple[int,...] = (0,0)):
+class GameWidget(QWidget):
+    '''Class for maintaining and visualizing the game state'''
+    def __init__(self, parent: 'HostWindow'):
         super().__init__(parent)
-        self.ancestor = parent
-        self.layout_position = layout_position
-        self.groupbox = GameGroupBox(get_style(BOX_STYLE.PL_1), width = _GAME_SIZE, height = _MENU_SIZE)
 
-        reset_button = MenuButton("New Game", (0,0,1,1))
-        reset_button.clicked.connect(self.ancestor.reset_new_game)
-        self.groupbox.layout().addWidget(reset_button, *reset_button.layout_position)
+        self.gc = GameController()
+        self.meta = MetaBoard((0,0,1,1), self.gc.take_turn, self.gc.register)
+        self.menu = MenuBox((1,0,1,1), parent.close, self.gc.undo_last_move, self.gc.reset_new_game, self.gc.register)
 
-        undo_button = MenuButton("Undo", (0,1,1,1))
-        undo_button.clicked.connect(self.ancestor.undo_last_move)
-        self.groupbox.layout().addWidget(undo_button, *undo_button.layout_position)
-
-        exit_button = MenuButton("Exit Game", (0,2,1,1))
-        exit_button.clicked.connect(self.ancestor.ancestor.close)
-        self.groupbox.layout().addWidget(exit_button, *exit_button.layout_position)
-
-    def update_turn_indicator(self, is_player_one: bool):
-        '''update the color of the groupbox to indicate which player's turn it is'''
-        self.groupbox.setStyleSheet(get_style(BOX_STYLE.PL_1 if is_player_one else BOX_STYLE.PL_2))
+        self.setLayout(QGridLayout())
+        self.layout().addWidget(self.meta.groupbox, *self.meta.layout_position)
+        self.layout().addWidget(self.menu.groupbox, *self.menu.layout_position)
 
 class HostWindow(QMainWindow):
     '''The main game window'''
     def __init__(self):
         super().__init__()
         self.setWindowTitle('Meta Tic-Tac-Toe')
-        self.setCentralWidget(GameController(parent = self))
+        self.setCentralWidget(GameWidget(parent = self))
         self.setStyleSheet('background-color: rgb(22,25,37)')
         self.show()
 
