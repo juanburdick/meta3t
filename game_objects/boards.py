@@ -15,43 +15,42 @@ class MenuBox(QWidget):
     '''Parent class for GroupBoxes for jogging buttons'''
     def __init__(self,
                  layout_position: Tuple[int,...],
-                 registration: Callable[[Any,Optional[Tuple[int,...]]], None],
-                 new_game_method: Callable,
-                 undo_method: Callable,
                  exit_method: Callable,
+                 undo_method: Callable,
+                 new_game_method: Callable,
+                 registration: Callable[[Any,Optional[Tuple[int,...]]], None],
                  ):
         super().__init__()
         self.layout_position = layout_position
         self.groupbox = GameGroupBox(get_box_style(SELECT.PL_1), width = _GAME_SIZE, height = _MENU_SIZE)
 
-        reset_button = MenuButton("New Game", (0,0,1,1))
-        reset_button.clicked.connect(new_game_method)
-        self.groupbox.layout().addWidget(reset_button, *reset_button.layout_position)
-
-        undo_button = MenuButton("Undo", (0,1,1,1))
-        undo_button.clicked.connect(undo_method)
-        self.groupbox.layout().addWidget(undo_button, *undo_button.layout_position)
-
         exit_button = MenuButton("Exit Game", (0,2,1,1))
+        undo_button = MenuButton("Undo", (0,1,1,1))
+        reset_button = MenuButton("New Game", (0,0,1,1))
+
         exit_button.clicked.connect(exit_method)
+        undo_button.clicked.connect(undo_method)
+        reset_button.clicked.connect(new_game_method)
+
         self.groupbox.layout().addWidget(exit_button, *exit_button.layout_position)
+        self.groupbox.layout().addWidget(undo_button, *undo_button.layout_position)
+        self.groupbox.layout().addWidget(reset_button, *reset_button.layout_position)
 
         registration(self, None)
 
-    def update_turn_indicator(self, is_player_one: bool):
+    def update_turn_indicator(self, turn_player: TURN):
         '''update the color of the groupbox to indicate which player's turn it is'''
-        self.groupbox.setStyleSheet(get_box_style(SELECT.PL_1 if is_player_one else SELECT.PL_2))
+        self.groupbox.setStyleSheet(get_box_style(turn_player.value))
 
 class MetaBoard(QWidget):
     '''Contain and track the main game/game board'''
     def __init__(self,
-                 size: int,
                  layout_position: Tuple[int,...],
                  get_turn_player: Callable[[GameButton], TURN],
                  registration: Callable[[Any,Optional[Tuple[int,...]]], None],
                  ):
         super().__init__()
-        self.groupbox = GameGroupBox(get_box_style(SELECT.PL_1), size, size)
+        self.groupbox = GameGroupBox(get_box_style(SELECT.PL_1), width = _GAME_SIZE, height = _GAME_SIZE)
         self.layout_position = layout_position
 
         for position in product((0,1,2), repeat = 2):
@@ -60,9 +59,9 @@ class MetaBoard(QWidget):
 
         registration(self, None)
 
-    def update_turn_indicator(self, is_player_one: bool):
+    def update_turn_indicator(self, turn_player: TURN):
         '''update the color of the groupbox to indicate which player's turn it is'''
-        self.groupbox.setStyleSheet(get_box_style(SELECT.PL_1 if is_player_one else SELECT.PL_2))
+        self.groupbox.setStyleSheet(get_box_style(turn_player.value))
 
 class SubGameBoard(QWidget):
     '''Contains a subgame of tic tac toe'''
@@ -77,16 +76,15 @@ class SubGameBoard(QWidget):
         self.groupbox = GameGroupBox(get_box_style(SELECT.DEFAULT_BOX), size, size)
         self.layout_position = layout_position
         self.is_claimed: bool = False
-
         self.buttons: List[GameButton] = []
-        self.claimed_button = GameButton('x', _CLAIMED_SIZE, (0,0), self.layout_position, get_turn_player, registration)
 
         for position in product((0,1,2), repeat = 2):
-            button = GameButton('', _BTN_SIZE, position, self.layout_position, get_turn_player, registration)
+            button = GameButton(_BTN_SIZE, position, self.layout_position, get_turn_player, registration)
             button.clicked.connect(button.claim)
             self.groupbox.layout().addWidget(button, *position) # type: ignore
             self.buttons.append(button)
 
+        self.claimed_button = GameButton(_CLAIMED_SIZE, (0,0), self.layout_position, get_turn_player, registration)
         if self.layout_position == (0,0):
             self.claim_board()
 
@@ -118,10 +116,11 @@ class SubGameBoard(QWidget):
         # claimed_button.setDisabled(True)
         self.claimed_button.clicked.connect(self.reset_board)
 
-    def reset_board(self):
+    def reset_board(self, new_game: bool = False):
         '''reset the board'''
         self.is_claimed = False
-        self.claimed_button.setParent(None)
+        self.claimed_button.setParent(None) # disown the claimed button (hide it)
         for button in self.buttons:
-            button.setParent(self)
+            button.setParent(self) # reclaim the other buttons (show them)
             self.groupbox.layout().addWidget(button, *button.layout_position)
+            if new_game: button.resetButtonstate() # also reset the buttons if it's a new game

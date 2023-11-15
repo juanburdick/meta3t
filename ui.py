@@ -1,20 +1,17 @@
-'''Entry point for the game, contains:
-    Launching methods
-    Top-level game objects for maintaining the state
-        GameController maintains the game state
-        GameWidget runs the game and connects visual elements with the GameController'''
+'''Entry point for the game, containing launching method and top-level game objects for maintaining the state'''
 # pylint: disable=no-name-in-module, import-error, fixme
 import sys
+from itertools import cycle
 from typing import List, Dict, Tuple, Protocol
 import numpy as np
 from PyQt5.QtWidgets import QApplication, QGridLayout, QWidget, QMainWindow
 from game_objects.boards import MetaBoard, SubGameBoard, MenuBox
-from game_objects.buttons import GameButton, TURN, TURN_CYCLER
+from game_objects.buttons import GameButton, TURN
 
-_GAME_SIZE = 700
+TURN_CYCLER = cycle((TURN.PL_1, TURN.PL_2))
 
 class TurnIndicator(Protocol):
-    def update_turn_indicator(self, _: bool) -> None:
+    def update_turn_indicator(self, _: TURN) -> None:
         return
 
 class GameController:
@@ -28,90 +25,61 @@ class GameController:
 
     def register(self, to_reg, key: Tuple[int,...] | None = None):
         '''allows game pieces to register themself with the game controller'''
-        if isinstance(to_reg, SubGameBoard):
-            self.boards[to_reg.layout_position] = to_reg
+        if isinstance(to_reg, SubGameBoard): self.boards[to_reg.layout_position] = to_reg
+        elif isinstance(to_reg, GameButton) and key is not None: self.buttons[key][to_reg.layout_position] = to_reg
+        elif hasattr(to_reg, 'update_turn_indicator') and callable(to_reg.update_turn_indicator): self.turn_indicators.append(to_reg)
 
-        elif isinstance(to_reg, GameButton):
-            if not key:
-                raise KeyError('Key is required when GameButton is registering!')
-            self.buttons[key][to_reg.layout_position] = to_reg
-
-        elif hasattr(to_reg, 'update_turn_indicator') and callable(to_reg.update_turn_indicator):
-            self.turn_indicators.append(to_reg)
-
-    def update_turn_indicators(self):
+    def show_next_turn(self):
         '''Call all registered turn indicators to update their displays'''
+        self.turn = next(TURN_CYCLER)
         for indicator in self.turn_indicators:
-            indicator.update_turn_indicator(self.turn is TURN.PL_1)
+            indicator.update_turn_indicator(self.turn)
 
     def update_boards(self, target: Tuple[int,...]):
         '''Try to activate a board (if it's already claimed, activate all unclaimed boards instead)'''
         target_board = self.boards[target]
 
-        if target_board.is_claimed: # if target board is claimed, enable all other unclaimed boards
-            for board in self.boards.values():
-                if not board.is_claimed:
-                    board.set_active_board()
+        for board in self.boards.values():
+            board.disable_board() # disable all boards
+            if target_board.is_claimed and not board.is_claimed: # if target board is claimed, we'll enable all other NOT claimed boards
+                board.set_active_board()
 
-        else: # if target board isn't claimed, enable target and disable all other unclaimed boards
-            target_board.set_active_board()
-            for board in self.boards.values():
-                if not board.is_claimed and board is not target_board:
-                    board.disable_board()
+        if not target_board.is_claimed: # if target board isn't claimed, we just disabled every board including target
+            target_board.set_active_board() # so enable just the target board
 
     def take_turn(self, button: GameButton) -> TURN:
         '''method that returns active player's turn, stores turn history, and updates turn player'''
-        self.update_boards(target = button.layout_position)
-        self.turn_history.append(button)
-
         player = self.turn
-        self.turn = next(TURN_CYCLER)
-        self.update_turn_indicators()
+        self.turn_history.append(button)
+        self.update_boards(target = button.layout_position)
+        self.show_next_turn()
         return player
 
     def undo_last_move(self):
         '''undo the most recent move'''
-        if len(self.turn_history) > 1:
-            square_played = self.turn_history.pop() # remove the last play from the history to discard it
-            square_played.resetButtonstate() # reset the button before discarding the play
+        if len(self.turn_history) < 2: self.reset_new_game(); return # if there's only one turn, just reset
 
-            prev_square = self.turn_history[-1] # to reset the board, we need to act as if the prev turn was just taken
-            self.update_boards(target = prev_square.layout_position)
-
-            self.turn = next(TURN_CYCLER) # since the game is binary, we can simply progress the turn cycler
-            self.update_turn_indicators() # and update the turn indicators appropriately
-
-        else: # since undoing carries a backref to the prev turn, if the turn to be undone was the first one
-            self.reset_new_game() # just reset
+        self.turn_history.pop().resetButtonstate() # remove the last play and reset the button before discarding
+        previous = self.turn_history[-1] # to reset the board, we need to act as if the prev turn was just taken
+        self.update_boards(target = previous.layout_position)
+        self.show_next_turn()
 
     def reset_new_game(self):
         '''reset the board for a new game'''
-        for board in self.boards.values():
-            for button in board.buttons:
-                button.resetButtonstate()
-            board.set_active_board()
-        if self.turn is TURN.PL_2:
-            self.turn = next(TURN_CYCLER)
-            self.update_turn_indicators()
         self.turn_history.clear()
+        if self.turn is TURN.PL_2: self.show_next_turn()
+        for board in self.boards.values():
+            board.reset_board(new_game = True)
+            board.set_active_board()
 
 class GameWidget(QWidget):
-    '''Used to implement a tabbed system of splitting widgets'''
+    '''Class for maintaining and visualizing the game state'''
     def __init__(self, parent: 'HostWindow'):
         super().__init__(parent)
 
         self.gc = GameController()
-
-        self.meta = MetaBoard(size = _GAME_SIZE,
-                              layout_position = (0,0,1,1),
-                              get_turn_player = self.gc.take_turn,
-                              registration = self.gc.register)
-
-        self.menu = MenuBox(layout_position = (1,0,1,1),
-                            registration = self.gc.register,
-                            new_game_method = self.gc.reset_new_game,
-                            undo_method = self.gc.undo_last_move,
-                            exit_method = parent.close)
+        self.meta = MetaBoard((0,0,1,1), self.gc.take_turn, self.gc.register)
+        self.menu = MenuBox((1,0,1,1), parent.close, self.gc.undo_last_move, self.gc.reset_new_game, self.gc.register)
 
         self.setLayout(QGridLayout())
         self.layout().addWidget(self.meta.groupbox, *self.meta.layout_position)

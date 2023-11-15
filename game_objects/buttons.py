@@ -1,20 +1,17 @@
 '''Used for easily initializing widgets, meant to reduce the repeated calls which specify the respective fields of similar widgets'''
 # pylint: disable=C0321, no-name-in-module, too-many-arguments
 from enum import Enum
-from itertools import cycle
 from typing import Tuple, Callable, Any, Optional
 from PyQt5.QtWidgets import QPushButton, QLabel, QGroupBox, QGridLayout
 from game_objects.stylesheets import SELECT, get_btn_style, BTN_STYLE_REF
 
 class TURN(Enum):
     '''Enum for tracking turn player'''
-    PL_1 = 1
-    PL_2 = 2
-
-TURN_CYCLER = cycle((TURN.PL_1, TURN.PL_2))
+    PL_1 = SELECT.PL_1
+    PL_2 = SELECT.PL_2
 
 class MenuButton(QPushButton):
-    """A standardized button for the game"""
+    """A standardized menu button for the game"""
     def __init__(self,
                  text: str,
                  layout_position: Tuple[int,...],
@@ -25,7 +22,7 @@ class MenuButton(QPushButton):
         self.setStyleSheet(BTN_STYLE_REF)
 
 class GameGroupBox(QGroupBox):
-    """A standard groub box widget for the WAAM GUI"""
+    """A standardized groupbox to contain game elements and serve as an indicator"""
     def __init__(self,
                  style:str,
                  width: int,
@@ -48,30 +45,27 @@ class GameLabel(QLabel):
         self.layout_position = layout_position
 
 class GameButton(QPushButton):
-    """A standardized button for the game"""
+    """A standardized square button for the game"""
     def __init__(self,
-                 text: str,
                  size: int,
                  layout_position: Tuple[int,...],
                  parent_position: Tuple[int,...],
                  get_turn_player: Callable[['GameButton'], TURN],
                  registration: Callable[[Any,Optional[Tuple[int,...]]], None],
                  ):
-        super().__init__(text = text)
+        super().__init__()
         self.setFixedSize(size, size)
+        self.setStyleSheet(get_btn_style(SELECT.DEFAULT_BTN))
         self.layout_position = layout_position
+        self.is_claimed: bool = False
+
         self.take_turn = get_turn_player
         registration(self, parent_position)
-
-        self.setStyleSheet(get_btn_style(SELECT.DEFAULT_BTN))
-        self.is_claimed: bool = False
 
     def claim(self):
         '''a user has selected this square, gaining control of it'''
         self.is_claimed = True
-        turn = self.take_turn(self)
-        ref = SELECT.PL_1 if turn is TURN.PL_1 else SELECT.PL_2
-        self.setStyleSheet(get_btn_style(ref))
+        self.setStyleSheet(get_btn_style(self.take_turn(self).value))
         self.setDisabled(True)
 
     def resetButtonstate(self):
