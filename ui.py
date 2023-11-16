@@ -1,7 +1,7 @@
 '''Entry point for the game, containing launching method and top-level game objects for maintaining the state'''
 # pylint: disable=no-name-in-module, import-error, fixme
 import sys
-from itertools import cycle
+from itertools import cycle, product
 from typing import List, Dict, Tuple, Protocol
 import numpy as np
 from PyQt5.QtWidgets import QApplication, QGridLayout, QWidget, QMainWindow
@@ -29,6 +29,26 @@ class GameController:
         elif isinstance(to_reg, GameButton) and key is not None: self.buttons[key][to_reg.layout_position] = to_reg
         elif hasattr(to_reg, 'update_turn_indicator') and callable(to_reg.update_turn_indicator): self.turn_indicators.append(to_reg)
 
+    def check_win(self):
+        '''check to see if a player has won this subgame board, claiming it'''
+        btn_eval = np.vectorize(lambda button: button.is_claimed)(self.buttons)
+        for target in product((0,1,2), repeat = 2):
+
+            btn_group = btn_eval[target]
+            rows = np.any(np.all(btn_group, axis = 0))
+            cols = np.any(np.all(btn_group, axis = 1))
+            diag = np.all(np.diagonal(btn_group))
+            anti_diag = np.all(np.diagonal(np.fliplr(btn_group)))
+
+
+            target_board = self.boards[target]
+            if np.any([rows, cols, diag, anti_diag]):
+                if target_board.is_claimed:
+                    continue
+                target_board.claim_board(self.turn)
+            else:
+                target_board.reset_board()
+
     def show_next_turn(self):
         '''Call all registered turn indicators to update their displays'''
         self.turn = next(TURN_CYCLER)
@@ -37,9 +57,10 @@ class GameController:
 
     def update_boards(self, target: Tuple[int,...]):
         '''Try to activate a board (if it's already claimed, activate all unclaimed boards instead)'''
+        self.check_win()
         target_board = self.boards[target]
 
-        for board in self.boards.values():
+        for _, board in self.boards.items():
             board.disable_board() # disable all boards
             if target_board.is_claimed and not board.is_claimed: # if target board is claimed, we'll enable all other NOT claimed boards
                 board.set_active_board()

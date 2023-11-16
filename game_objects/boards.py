@@ -77,16 +77,13 @@ class SubGameBoard(QWidget):
         self.layout_position = layout_position
         self.is_claimed: bool = False
         self.buttons: List[GameButton] = []
+        self.claimed_button = GameButton(_CLAIMED_SIZE, (0,0), self.layout_position, get_turn_player, registration)
 
         for position in product((0,1,2), repeat = 2):
             button = GameButton(_BTN_SIZE, position, self.layout_position, get_turn_player, registration)
             button.clicked.connect(button.claim)
             self.groupbox.layout().addWidget(button, *position) # type: ignore
             self.buttons.append(button)
-
-        self.claimed_button = GameButton(_CLAIMED_SIZE, (0,0), self.layout_position, get_turn_player, registration)
-        if self.layout_position == (0,0):
-            self.claim_board()
 
         registration(self, None)
 
@@ -105,16 +102,15 @@ class SubGameBoard(QWidget):
             if not button.is_claimed:
                 button.setStyleSheet(get_btn_style(SELECT.DISABLED_BTN))
 
-    def claim_board(self):
+    def claim_board(self, player: TURN):
         '''a player has won this board, display that player's symbol and lock the board'''
         self.is_claimed = True
         for button in self.buttons:
             button.setParent(None)
 
         self.groupbox.layout().addWidget(self.claimed_button, *self.claimed_button.layout_position)
-        self.claimed_button.setStyleSheet(get_btn_style(SELECT.PL_1))
-        # claimed_button.setDisabled(True)
-        self.claimed_button.clicked.connect(self.reset_board)
+        self.claimed_button.setStyleSheet(get_btn_style(player.value))
+        self.claimed_button.setDisabled(True)
 
     def reset_board(self, new_game: bool = False):
         '''reset the board'''
