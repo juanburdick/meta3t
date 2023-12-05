@@ -58,6 +58,7 @@ class GameButton(QPushButton):
         self.setStyleSheet(get_btn_style(SELECT.DEFAULT_BTN))
         self.layout_position = layout_position
         self.is_claimed: bool = False
+        self.owned_by_player: TURN | None = None
 
         self.take_turn = get_turn_player
         registration(self, parent_position)
@@ -65,11 +66,13 @@ class GameButton(QPushButton):
     def claim(self):
         '''a user has selected this square, gaining control of it'''
         self.is_claimed = True
-        self.setStyleSheet(get_btn_style(self.take_turn(self).value))
+        self.owned_by_player = self.take_turn(self)
+        self.setStyleSheet(get_btn_style(self.owned_by_player.value))
         self.setDisabled(True)
 
     def resetButtonstate(self):
         '''undo button was clicked, reset this square'''
         self.is_claimed = False
+        self.owned_by_player = None
         self.setStyleSheet(get_btn_style(SELECT.DEFAULT_BTN))
         self.setEnabled(True)

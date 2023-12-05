@@ -31,22 +31,33 @@ class GameController:
 
     def check_win(self):
         '''check to see if a player has won this subgame board, claiming it'''
-        btn_eval = np.vectorize(lambda button: button.is_claimed)(self.buttons)
+        pl1_eval = np.vectorize(lambda button: button.owned_by_player is TURN.PL_1)(self.buttons)
+        pl2_eval = np.vectorize(lambda button: button.owned_by_player is TURN.PL_2)(self.buttons)
         for target in product((0,1,2), repeat = 2):
 
-            btn_group = btn_eval[target]
-            rows = np.any(np.all(btn_group, axis = 0))
-            cols = np.any(np.all(btn_group, axis = 1))
-            diag = np.all(np.diagonal(btn_group))
-            anti_diag = np.all(np.diagonal(np.fliplr(btn_group)))
+            pl1_buttons = pl1_eval[target]
+            pl1_diag1 = np.expand_dims(pl1_buttons.diagonal(),1)
+            pl1_diag2 = np.expand_dims(np.fliplr(pl1_buttons).diagonal(),1)
+            pl1_stacked = np.hstack((pl1_buttons, pl1_buttons.T, pl1_diag1, pl1_diag2))
 
+            pl2_buttons = pl2_eval[target]
+            pl2_diag1 = np.expand_dims(pl2_buttons.diagonal(),1)
+            pl2_diag2 = np.expand_dims(np.fliplr(pl2_buttons).diagonal(),1)
+            pl2_stacked = np.hstack((pl2_buttons, pl2_buttons.T, pl2_diag1, pl2_diag2))
 
             target_board = self.boards[target]
-            if np.any([rows, cols, diag, anti_diag]):
+
+            if np.any(np.all(pl1_stacked, axis = 0)):
                 if target_board.is_claimed:
                     continue
-                target_board.claim_board(self.turn)
-            else:
+                target_board.claim_board(TURN.PL_1)
+
+            if np.any(np.all(pl2_stacked, axis = 0)):
+                if target_board.is_claimed:
+                    continue
+                target_board.claim_board(TURN.PL_2)
+
+            if not np.any(np.all(pl1_stacked, axis = 0)) and not np.any(np.all(pl2_stacked, axis = 0)):
                 target_board.reset_board()
 
     def show_next_turn(self):
