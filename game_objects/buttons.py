@@ -1,7 +1,7 @@
 '''Used for easily initializing widgets, meant to reduce the repeated calls which specify the respective fields of similar widgets'''
 # pylint: disable=C0321, no-name-in-module, too-many-arguments
 from enum import Enum
-from typing import Tuple, Callable, Any, Optional
+from typing import Tuple
 from PyQt5.QtWidgets import QPushButton, QLabel, QGroupBox, QGridLayout
 from game_objects.stylesheets import SELECT, get_btn_style, BTN_STYLE_REF
 
@@ -49,34 +49,21 @@ class GameButton(QPushButton):
     def __init__(self,
                  size: int,
                  layout_position: Tuple[int,...],
-                 parent_position: Tuple[int,...],
-                 get_turn_player: Callable[['GameButton'], None],
-                 registration: Callable[[Any,Optional[Tuple[int,...]]], None],
                  ):
         super().__init__()
         self.setFixedSize(size, size)
         self.setStyleSheet(get_btn_style(SELECT.DEFAULT_BTN))
         self.layout_position = layout_position
-        self.is_claimed: bool = False
         self.owned_by_player: TURN | None = None
-
-        self.take_turn = get_turn_player
-        registration(self, parent_position)
-
-    def claim(self):
-        '''a user has selected this square, gaining control of it'''
-        self.take_turn(self)
 
     def claim_button(self, player: TURN):
         '''update signals to indicate which player gained control of this button'''
-        self.is_claimed = True
         self.owned_by_player = player
         self.setStyleSheet(get_btn_style(player.value))
         self.setDisabled(True)
 
     def resetButtonstate(self):
         '''undo button was clicked, reset this square'''
-        self.is_claimed = False
         self.owned_by_player = None
         self.setStyleSheet(get_btn_style(SELECT.DEFAULT_BTN))
         self.setEnabled(True)

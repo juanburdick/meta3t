@@ -24,9 +24,12 @@ class MenuBox(QWidget):
         self.layout_position = layout_position
         self.groupbox = GameGroupBox(get_box_style(SELECT.PL_1), width = _GAME_SIZE, height = _MENU_SIZE)
 
-        exit_button = MenuButton("Exit Game", (0,2,1,1))
-        undo_button = MenuButton("Undo", (0,1,1,1))
-        reset_button = MenuButton("New Game", (0,0,1,1))
+        # labels = ["New Game", "Undo", "Exit Game"]
+        # positions = [(0,0), (0,1), (0,2)]
+        # methods = [new_game_method, undo_method, exit_method]
+        exit_button = MenuButton("Exit Game", (0,2))
+        undo_button = MenuButton("Undo", (0,1))
+        reset_button = MenuButton("New Game", (0,0))
 
         exit_button.clicked.connect(exit_method)
         undo_button.clicked.connect(undo_method)
@@ -77,21 +80,26 @@ class SubGameBoard(QWidget):
         self.layout_position = layout_position
         self.is_claimed: bool = False
         self.buttons: List[GameButton] = []
-        self.claimed_button = GameButton(_CLAIMED_SIZE, (0,0), self.layout_position, get_turn_player, registration)
+        self.claimed_button = GameButton(_CLAIMED_SIZE, (0,0))
 
         for position in product((0,1,2), repeat = 2):
-            button = GameButton(_BTN_SIZE, position, self.layout_position, get_turn_player, registration)
-            button.clicked.connect(button.claim)
+            button = GameButton(_BTN_SIZE, position)
+            button.clicked.connect(self.make_btn_signal(get_turn_player, button))
             self.groupbox.layout().addWidget(button, *position) # type: ignore
             self.buttons.append(button)
+            registration(button, self.layout_position)
 
         registration(self, None)
+
+    def make_btn_signal(self, callup: Callable[[GameButton], None], btn: GameButton):
+        '''make a signal for connecting a button to'''
+        return lambda: callup(btn)
 
     def set_active_board(self):
         '''this is the board the current player will be forced to play in, set all buttons in it active'''
         self.groupbox.setStyleSheet(get_box_style(SELECT.DEFAULT_BOX))
         for button in self.buttons:
-            if not button.is_claimed:
+            if button.owned_by_player is None:
                 button.resetButtonstate()
 
     def disable_board(self):
@@ -99,7 +107,7 @@ class SubGameBoard(QWidget):
         self.groupbox.setStyleSheet(get_box_style(SELECT.DISABLED_BOX))
         for button in self.buttons:
             button.setDisabled(True)
-            if not button.is_claimed:
+            if button.owned_by_player is None:
                 button.setStyleSheet(get_btn_style(SELECT.DISABLED_BTN))
 
     def claim_board(self, player: TURN):
