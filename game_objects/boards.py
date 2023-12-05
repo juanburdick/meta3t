@@ -46,7 +46,7 @@ class MetaBoard(QWidget):
     '''Contain and track the main game/game board'''
     def __init__(self,
                  layout_position: Tuple[int,...],
-                 get_turn_player: Callable[[GameButton], TURN],
+                 get_turn_player: Callable[[GameButton], None],
                  registration: Callable[[Any,Optional[Tuple[int,...]]], None],
                  ):
         super().__init__()
@@ -68,7 +68,7 @@ class SubGameBoard(QWidget):
     def __init__(self,
                  size: int,
                  layout_position : Tuple[int,...],
-                 get_turn_player: Callable[[GameButton], TURN],
+                 get_turn_player: Callable[[GameButton], None],
                  registration: Callable[[Any,Optional[Tuple[int,...]]], None],
                 ):
         super().__init__()

@@ -50,7 +50,7 @@ class GameButton(QPushButton):
                  size: int,
                  layout_position: Tuple[int,...],
                  parent_position: Tuple[int,...],
-                 get_turn_player: Callable[['GameButton'], TURN],
+                 get_turn_player: Callable[['GameButton'], None],
                  registration: Callable[[Any,Optional[Tuple[int,...]]], None],
                  ):
         super().__init__()
@@ -65,9 +65,13 @@ class GameButton(QPushButton):
 
     def claim(self):
         '''a user has selected this square, gaining control of it'''
+        self.take_turn(self)
+
+    def claim_button(self, player: TURN):
+        '''update signals to indicate which player gained control of this button'''
         self.is_claimed = True
-        self.owned_by_player = self.take_turn(self)
-        self.setStyleSheet(get_btn_style(self.owned_by_player.value))
+        self.owned_by_player = player
+        self.setStyleSheet(get_btn_style(player.value))
         self.setDisabled(True)
 
     def resetButtonstate(self):

@@ -79,13 +79,12 @@ class GameController:
         if not target_board.is_claimed: # if target board isn't claimed, we just disabled every board including target
             target_board.set_active_board() # so enable just the target board
 
-    def take_turn(self, button: GameButton) -> TURN:
+    def take_turn(self, button: GameButton) -> None:
         '''method that returns active player's turn, stores turn history, and updates turn player'''
-        player = self.turn
+        button.claim_button(self.turn)
         self.turn_history.append(button)
         self.update_boards(target = button.layout_position)
         self.show_next_turn()
-        return player
 
     def undo_last_move(self):
         '''undo the most recent move'''
